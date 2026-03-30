@@ -1,0 +1,5 @@
+{
+  "name": "knowledge-bridge",
+  "version": "1.0.0",
+  "description": "Closes the knowledge gap between AI training data and current library/SDK documentation by enforcing live documentation fetching before writing code."
+}
