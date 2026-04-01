@@ -1,0 +1,5 @@
+{
+  "name": "gs-connect",
+  "version": "1.0.0",
+  "description": "GS-OS Ontology MCP server connection setup — VPN prerequisites, transport selection (stdio/SSE), client-specific configuration, and connection verification."
+}
