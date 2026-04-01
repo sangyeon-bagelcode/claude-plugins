@@ -15,6 +15,7 @@ GS팀의 Claude Code 플러그인 마켓플레이스
 | **adb-mcp** | Adobe MCP 설정 가이드 | `/adb-mcp:setup` | `adb-mcp-setup` |
 | **onboard** | 마켓플레이스 온보딩 | `/onboard:setup` | `marketplace-guide` |
 | **gws-cli-setup** | Google Workspace CLI 설치/설정 | `/gws-cli-setup` | `gws-cli-setup` |
+| **gs-connect** | GS-OS Ontology MCP 서버 연결 설정 | `/gs-connect` | `gs-connect` |
 
 ## 빠른 시작 (새 환경)
 

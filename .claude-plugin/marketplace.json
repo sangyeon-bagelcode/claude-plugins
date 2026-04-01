@@ -93,6 +93,14 @@
       "version": "1.0.0",
       "category": "development",
       "keywords": ["documentation", "knowledge-gap", "sdk", "api", "live-docs", "staleness", "context7"]
+    },
+    {
+      "name": "gs-connect",
+      "description": "GS-OS Ontology MCP server connection setup — VPN prerequisites, transport selection (stdio/SSE), client-specific configuration, and connection verification.",
+      "source": "./plugins/gs-connect",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": ["mcp", "ontology", "gs-os", "vpn", "sse", "setup", "connection"]
     }
   ]
 }
