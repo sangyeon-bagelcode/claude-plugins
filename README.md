@@ -16,7 +16,7 @@ GS팀의 Claude Code 플러그인 마켓플레이스
 | **onboard** | 마켓플레이스 온보딩 | `/onboard:setup` | `marketplace-guide` |
 | **gws-cli-setup** | Google Workspace CLI 설치/설정 | `/gws-cli-setup` | `gws-cli-setup` |
 | **gs-connect** | GS-OS Ontology MCP 서버 연결 설정 | `/gs-connect` | `gs-connect` |
-| **slot-maker** | 슬롯 게임 에셋 자동 생성 (Unity MCP) | | `jackpot-board-generator` |
+| **jackpot-board-generator** | 슬롯 게임 에셋 자동 생성 (Unity MCP) | | `jackpot-board-generator` |
 
 ## 빠른 시작 (새 환경)
 
