@@ -101,6 +101,14 @@
       "version": "1.0.0",
       "category": "development",
       "keywords": ["mcp", "ontology", "gs-os", "vpn", "sse", "setup", "connection"]
+    },
+    {
+      "name": "slot-maker",
+      "description": "슬롯 게임 에셋 자동 생성 도구. Jackpot Board prefab hierarchy, rolling/lock animation, animator controller를 Unity MCP로 자동 생성.",
+      "source": "./plugins/slot-maker",
+      "version": "1.0.0",
+      "category": "art",
+      "keywords": ["slot", "unity", "mcp", "jackpot", "prefab", "animation", "animator", "lock"]
     }
   ]
 }
