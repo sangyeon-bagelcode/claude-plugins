@@ -1,0 +1,5 @@
+{
+  "name": "harness-init",
+  "version": "1.0.0",
+  "description": "Analyzes a project and sets up complete Claude Code harness configuration — CLAUDE.md, settings/hooks, and skill recommendations — based on actual code analysis, not templates."
+}
