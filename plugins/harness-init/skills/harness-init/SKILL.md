@@ -115,36 +115,41 @@ Behavioral rules are not invented — they are **derived from observed patterns*
 
 ### CLAUDE.md Template
 
+Modeled after Anthropic's own CLAUDE.md files and well-maintained open source projects (Deno, LangChain). Sections are ordered by priority — commands first, gotchas before conventions.
+
 ```markdown
 # {Project Name}
 
 ## Commands
-{ONLY commands Claude can't guess — exact build, test, lint, run, format commands}
-{Include flags, env vars, and gotchas for each command}
+{Exact build, test, lint, run, format commands — only those Claude can't guess}
+{Include flags, env vars, and per-command gotchas}
+
+## What This Is
+{1-3 sentences: what the project does, how it runs, single entrypoint if applicable}
+{Brief, factual, no marketing copy}
+
+## How It Works
+{Key directories, entrypoints, and data flow — HOW the system is organized}
+{NOT what every file does — just enough to navigate confidently}
+
+## Things That Will Bite You
+{Non-obvious behaviors, tribal knowledge, common mistakes}
+{This is the highest-value section — encode what a new contributor learns the hard way}
+
+## Code Conventions
+{ONLY rules that differ from defaults — imperative tone, no explanations}
+{Example: "Runtime is Bun, not Node. Use bun test, not jest."}
 
 ## Workflow
-{HOW Claude should approach changes in this codebase}
-{Examples: "Always typecheck after code changes", "Run single tests not full suite",
- "Use plan mode for changes under src/billing/"}
-
-## Code Style
-{ONLY rules that differ from defaults — not "use TypeScript" in a TS project}
-{Examples: "Use named exports, never default exports", "Error types must extend AppError"}
-
-## Architecture Decisions
-{WHY decisions were made, not WHAT the architecture is}
-{Examples: "We use event sourcing for audit trail — never mutate state directly",
- "API handlers must go through the middleware chain — never call DB directly from routes"}
-
-## Gotchas
-{Non-obvious behaviors that will trip Claude up}
-{Examples: "The test DB resets between suites but NOT between tests in the same suite",
- "import paths must use .js extension even for .ts files (ESM requirement)"}
-
-## Compact Instructions
-{What to preserve when context is compacted}
-{Example: "When compacting, preserve the full list of modified files and test commands"}
+{Branch naming, PR conventions, CI checks, deployment rules — if applicable}
 ```
+
+**Tone:** Imperative, factual, minimal prose. "moduleResolution: bundler — imports don't need .js extensions." Not "Please make sure to use the correct module resolution setting."
+
+**Length guide:**
+- Simple projects: 10-60 lines
+- Medium projects: 60-150 lines
+- Complex projects: 150-300 lines (split overflow to `.claude/rules/`)
 
 ### Create .claude/rules/ for Detailed Topics
 
@@ -178,11 +183,12 @@ Generate rules files for each distinct domain detected in Step 1 (API, testing, 
 
 ### Validation Rules
 
-1. **Under 200 lines** — If longer, split into `.claude/rules/`
-2. **No README content** — If a line describes what the project IS rather than how to WORK in it, delete it
-3. **No generic advice** — Every instruction must trace to a specific observed project characteristic
-4. **Emphasis for critical rules** — Use "IMPORTANT" or "YOU MUST" for rules that cause real problems when violated
-5. **Actionable** — Every line must be something Claude can act on, not background info
+1. **Length proportional to complexity** — Simple: 10-60, Medium: 60-150, Complex: 150-300 lines. Overflow goes to `.claude/rules/`
+2. **Commands section exists and is first** — Claude needs build/test/lint commands above all else
+3. **"Things That Will Bite You" section exists** — If you found zero gotchas, you didn't scan deeply enough
+4. **No generic advice** — Every instruction must trace to a specific observed project characteristic
+5. **Imperative factual tone** — Short declarative sentences, no tutorials, no personality instructions
+6. **Emphasis for critical rules** — Use "IMPORTANT" or "YOU MUST" sparingly, only for rules that cause real breakage
 
 **Pause for user approval** before writing. Present the proposed CLAUDE.md and rules files, and ask the user to confirm or request changes.
 
@@ -241,8 +247,9 @@ Validate all produced artifacts:
 | Check | How | Pass Condition |
 |-------|-----|----------------|
 | CLAUDE.md exists | Glob/Read | File present at project root |
-| CLAUDE.md is behavioral guide | Read and verify | No README-style descriptions; contains commands, workflow, gotchas |
-| CLAUDE.md under 200 lines | `wc -l` | 200 lines or fewer for high adherence |
+| CLAUDE.md has Commands first | Read | Commands section exists and is the first content section |
+| CLAUDE.md has Gotchas | Read | "Things That Will Bite You" section with at least 2 non-obvious items |
+| CLAUDE.md length proportional | `wc -l` | Simple: <60, Medium: <150, Complex: <300 lines |
 | .claude/rules/ created | Glob | At least 1 path-scoped rule file if project has distinct domains |
 | settings.json valid | Read + JSON parse | Valid JSON, no syntax errors |
 | Hooks reference valid commands | Bash: `which <command>` or check in `node_modules/.bin/` | All hook commands exist |
@@ -301,17 +308,17 @@ digraph harness_init {
 
 ## Anti-Pattern: "README-as-CLAUDE.md"
 
-The most common failure mode is producing a CLAUDE.md that reads like a README: project overview, tech stack list, architecture diagram. This is USELESS. Claude can read package.json and source code — it doesn't need you to summarize them.
+The most common failure mode is producing a CLAUDE.md that reads like a README: listing tech stack, describing every file, writing marketing copy. Some project context is needed (see "What This Is" and "How It Works" sections), but it should be **brief and factual**, not exhaustive.
 
-**A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
+**Test each line:** Does this help Claude **do work**, or does it just describe the project?
 
-| README-style (BAD) | Behavioral guide (GOOD) |
-|---------------------|------------------------|
-| "This project uses TypeScript and React" | "Use named exports, never default exports" |
+| Descriptive (low value) | Actionable (high value) |
+|-------------------------|------------------------|
+| "This project uses TypeScript and React" | "Runtime is Bun, not Node. Use bun test, not jest." |
 | "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body directly" |
 | "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>` for single tests, never the full suite" |
 | "The database is PostgreSQL" | "Never write raw SQL — use the query builder in src/db/queries.ts" |
-| "The project follows MVC architecture" | "Controllers must not import from models directly — always go through services" |
+| "Authentication uses JWT tokens" | "Token lifecycle matters: obtained early, revoked in always() step. Don't skip revocation." |
 
 ## Anti-Pattern: "This Is Too Simple"
 
