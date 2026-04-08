@@ -53,6 +53,8 @@ CLAUDE.md at project root          → exists? contents?
 CLAUDE.md in subdirectories        → exists? contents?
 .claude/ directory                 → exists? contents?
 .claude/settings.json              → exists? current rules/hooks?
+.claude/rules/                     → exists? what rules?
+.claude/skills/                    → exists? what skills?
 AGENTS.md / GEMINI.md              → exists? contents?
 ```
 
@@ -67,38 +69,100 @@ AGENTS.md / GEMINI.md              → exists? contents?
 
 Tools: Glob, Read
 
-## Step 3: Generate CLAUDE.md
+## Step 3: Generate CLAUDE.md + .claude/rules/
 
-Produce a project-specific CLAUDE.md using this structure. Every instruction MUST trace back to a specific observation from Step 1.
+CLAUDE.md is a **behavioral guide**, NOT a README. It tells Claude HOW to work in this project — not WHAT the project is. Target **under 200 lines** for high adherence.
+
+### The Golden Rule
+
+For every line, ask: **"Would removing this cause Claude to make mistakes?"**
+- YES → keep it
+- NO → cut it. Claude can figure it out by reading code.
+
+### What to INCLUDE vs EXCLUDE
+
+| INCLUDE | EXCLUDE |
+|---------|---------|
+| Commands Claude can't guess (`npm run dev:local --port 3001`) | Anything Claude can figure out by reading code |
+| Code style rules that **differ from defaults** | Standard language conventions Claude already knows |
+| Testing instructions and gotchas | Detailed API documentation (link to docs instead) |
+| Repo etiquette (branch naming, PR conventions) | Information that changes frequently |
+| Architectural decisions and **why** they were made | Long explanations or tutorials |
+| Common gotchas and non-obvious behaviors | File-by-file descriptions of the codebase |
+| Dev environment quirks (required env vars, local services) | Self-evident practices like "write clean code" |
+
+### CLAUDE.md Template
 
 ```markdown
 # {Project Name}
 
-## Overview
-{1-2 sentences: what this project does, derived from README or code analysis}
+## Commands
+{ONLY commands Claude can't guess — exact build, test, lint, run, format commands}
+{Include flags, env vars, and gotchas for each command}
 
-## Tech Stack
-{Languages, frameworks, key dependencies with versions}
+## Workflow
+{HOW Claude should approach changes in this codebase}
+{Examples: "Always typecheck after code changes", "Run single tests not full suite",
+ "Use plan mode for changes under src/billing/"}
 
-## Architecture
-{Key components, their relationships, data flow — based on actual code reading}
+## Code Style
+{ONLY rules that differ from defaults — not "use TypeScript" in a TS project}
+{Examples: "Use named exports, never default exports", "Error types must extend AppError"}
 
-## Coding Conventions
-{Naming patterns, file organization, style rules — cite evidence from linter configs or code}
+## Architecture Decisions
+{WHY decisions were made, not WHAT the architecture is}
+{Examples: "We use event sourcing for audit trail — never mutate state directly",
+ "API handlers must go through the middleware chain — never call DB directly from routes"}
 
-## Development Commands
-{Exact commands for: build, test, lint, run, format — from package.json scripts or Makefile}
+## Gotchas
+{Non-obvious behaviors that will trip Claude up}
+{Examples: "The test DB resets between suites but NOT between tests in the same suite",
+ "import paths must use .js extension even for .ts files (ESM requirement)"}
 
-## Testing
-{Test framework, file naming pattern, how to run tests, coverage expectations}
-
-## Important Constraints
-{Security rules, performance requirements, compatibility — only if observed in code/config}
+## Compact Instructions
+{What to preserve when context is compacted}
+{Example: "When compacting, preserve the full list of modified files and test commands"}
 ```
 
-**Validation rule:** If you cannot cite the specific file or config where you observed a convention, do not include it. No generic advice.
+### Create .claude/rules/ for Detailed Topics
 
-**Pause for user approval** before writing the file. Present the proposed CLAUDE.md content and ask the user to confirm or request changes.
+Split domain-specific rules into `.claude/rules/` files. Use `paths:` frontmatter so rules only load when relevant, saving context:
+
+```markdown
+# .claude/rules/api-design.md
+---
+paths:
+  - "src/api/**/*.ts"
+  - "src/routes/**/*.ts"
+---
+- All API endpoints must validate input with zod schemas
+- Use kebab-case for URL paths, camelCase for JSON properties
+- Always include pagination for list endpoints
+```
+
+```markdown
+# .claude/rules/testing.md
+---
+paths:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+---
+- Use describe/it blocks, not test()
+- Never mock the database — use test fixtures
+- Each test file must clean up its own state
+```
+
+Generate rules files for each distinct domain detected in Step 1 (API, testing, frontend components, database, etc.).
+
+### Validation Rules
+
+1. **Under 200 lines** — If longer, split into `.claude/rules/`
+2. **No README content** — If a line describes what the project IS rather than how to WORK in it, delete it
+3. **No generic advice** — Every instruction must trace to a specific observed project characteristic
+4. **Emphasis for critical rules** — Use "IMPORTANT" or "YOU MUST" for rules that cause real problems when violated
+5. **Actionable** — Every line must be something Claude can act on, not background info
+
+**Pause for user approval** before writing. Present the proposed CLAUDE.md and rules files, and ask the user to confirm or request changes.
 
 Tools: Write or Edit
 
@@ -155,7 +219,9 @@ Validate all produced artifacts:
 | Check | How | Pass Condition |
 |-------|-----|----------------|
 | CLAUDE.md exists | Glob/Read | File present at project root |
-| CLAUDE.md is project-specific | Read and verify | No generic template text; all instructions cite evidence |
+| CLAUDE.md is behavioral guide | Read and verify | No README-style descriptions; contains commands, workflow, gotchas |
+| CLAUDE.md under 200 lines | `wc -l` | 200 lines or fewer for high adherence |
+| .claude/rules/ created | Glob | At least 1 path-scoped rule file if project has distinct domains |
 | settings.json valid | Read + JSON parse | Valid JSON, no syntax errors |
 | Hooks reference valid commands | Bash: `which <command>` or check in `node_modules/.bin/` | All hook commands exist |
 | No conflicts | Compare new vs existing config | No overwrites of user customizations |
@@ -211,17 +277,32 @@ digraph harness_init {
 }
 ```
 
+## Anti-Pattern: "README-as-CLAUDE.md"
+
+The most common failure mode is producing a CLAUDE.md that reads like a README: project overview, tech stack list, architecture diagram. This is USELESS. Claude can read package.json and source code — it doesn't need you to summarize them.
+
+**A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
+
+| README-style (BAD) | Behavioral guide (GOOD) |
+|---------------------|------------------------|
+| "This project uses TypeScript and React" | "Use named exports, never default exports" |
+| "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body directly" |
+| "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>` for single tests, never the full suite" |
+| "The database is PostgreSQL" | "Never write raw SQL — use the query builder in src/db/queries.ts" |
+| "The project follows MVC architecture" | "Controllers must not import from models directly — always go through services" |
+
 ## Anti-Pattern: "This Is Too Simple"
 
 Every project — no matter how small or "standard" — goes through the full 6-step checklist. There are no exceptions.
 
-**Why:** Agents skip steps precisely when the project seems familiar. A "standard React app" has hundreds of possible convention combinations. The analysis exists because assumptions about familiar projects produce the most generic, useless CLAUDE.md files. A CLAUDE.md that says "use TypeScript" for a TypeScript project adds zero value — the value comes from discovering the _specific_ patterns this project uses.
+**Why:** Agents skip steps precisely when the project seems familiar. A "standard React app" has hundreds of possible convention combinations. A CLAUDE.md that says "use TypeScript" for a TypeScript project adds zero value — the value comes from discovering the _specific_ behavioral rules this project needs.
 
 ## Rationalization Table
 
 | Excuse | Counter |
 |--------|---------|
-| "I can write a good CLAUDE.md from the directory listing alone" | Directory listings reveal file names, not architecture, conventions, or testing patterns. A CLAUDE.md without code reading is a generic template with project names swapped in. |
+| "I can write a good CLAUDE.md from the directory listing alone" | Directory listings reveal file names, not behavioral rules, gotchas, or workflow patterns. A CLAUDE.md without code reading is a generic template with project names swapped in. |
+| "I should document the project's tech stack and architecture in CLAUDE.md" | CLAUDE.md is a behavioral guide, not a README. Claude can read package.json and source code. Document HOW to work in the project (rules, gotchas, workflow), not WHAT the project is. Every line that describes the project instead of guiding behavior wastes context tokens and reduces adherence. |
 | "This is a standard React/Node/Python project, no deep analysis needed" | "Standard" projects have the most variation in conventions. Two React projects can differ entirely in state management, testing, and structure. The word "standard" substitutes a label for actual observation. |
 | "The user just wants a CLAUDE.md, I don't need hooks too" | CLAUDE.md alone is a partial harness. The skill is "harness-init", not "claude-md-init". Partial setup creates a false sense of completeness. |
 | "I already know this codebase from earlier in the conversation" | Conversation memory is not systematic analysis. Prior knowledge may be incomplete or biased toward recently-viewed files. Each invocation must produce evidence from current file reads. |
