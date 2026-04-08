@@ -65,9 +65,11 @@ Q: Could Claude discover this by reading that file?
    → YES → DISCARD. Do not write it.
 Only candidates that fail BOTH questions enter the draft.
 ```
-Step 3: Write CLAUDE.md using ONLY the surviving candidates.
+Step 3: Write CLAUDE.md using ONLY the surviving candidates. The draft must contain NO information that is not in the KEEP column of your filter table. If a fact is not in the table, it does not go in the draft.
 
 **The test is binary. "Useful" is not a factor.** If the info exists in the repo, Claude will find it when it needs it. CLAUDE.md is not a summary of the codebase — it is a list of things that cannot be found by reading code.
+
+**Do not add sections beyond the template.** If the template has no "External Dependencies" section, do not create one. Stick to: Commands, What This Is, How It Works, Things That Will Bite You, Guidelines, Code Conventions, Workflow.
 
 ### Template (Anthropic pattern)
 
