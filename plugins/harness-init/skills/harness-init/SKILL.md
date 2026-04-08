@@ -50,24 +50,24 @@ Check: `CLAUDE.md`, `.claude/`, `.claude/settings.json`, `.claude/rules/`, `.cla
 
 Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO → cut it.
 
-### The Code-Readable Filter (mandatory, mechanical)
+### The Code-Readable Filter (BEFORE writing, not after)
 
-After drafting CLAUDE.md, apply this filter to EVERY line. This is not optional.
+Do NOT write a draft first and filter later. You will fail to delete your own writing.
 
-**For each line, run this test:**
+**Process: filter first, then write.**
+
+Step 1: From the scan results, build a candidate list of facts you might include.
+Step 2: For each candidate, run this test:
 ```
-1. Does this information exist in ANY file in the repo?
-   (source code, config, schema, package.json, tsconfig, README...)
-   → YES → DELETE the line. No exceptions.
-   → NO → go to step 2.
-
-2. Could Claude discover this by reading the relevant file?
-   (function signatures, import patterns, DB schema, config values...)
-   → YES → DELETE the line.
-   → NO → KEEP. This is genuine operational knowledge.
+Q: Does this information exist in ANY file in the repo?
+   → YES → DISCARD. Do not write it.
+Q: Could Claude discover this by reading that file?
+   → YES → DISCARD. Do not write it.
+Only candidates that fail BOTH questions enter the draft.
 ```
+Step 3: Write CLAUDE.md using ONLY the surviving candidates.
 
-Every line in the draft must pass both tests. No exceptions, no "but this is useful" overrides. If it exists in the repo, Claude will find it.
+**The test is binary. "Useful" is not a factor.** If the info exists in the repo, Claude will find it when it needs it. CLAUDE.md is not a summary of the codebase — it is a list of things that cannot be found by reading code.
 
 ### Template (Anthropic pattern)
 
@@ -113,14 +113,14 @@ For monorepos, use subdirectory CLAUDE.md files — they load on demand when Cla
 
 ### Validation
 
-Go line by line and apply the Code-Readable Filter. If ANY check fails, revise before presenting.
+Before presenting the draft, verify:
 
-- **"How It Works"**: Is it ONE data flow sentence? Does it name specific files, models, or databases? If yes → rewrite.
-- **"Things That Will Bite You"**: For each item, can Claude find this by reading ONE file? If yes → CUT or rewrite as workflow gotcha.
-- **"Code Conventions"**: Does a linter/config already enforce this? If yes → CUT.
-- **Total under 100 lines** (150 max for complex projects)
-- Commands section is first
-- Imperative factual tone
+1. **Show your filter work.** List each candidate fact and whether it passed or failed the 2-question test. Present this table to the user alongside the draft so they can verify.
+2. **How It Works:** Max 1-2 sentences. Data flow only.
+3. **Things That Will Bite You:** Each item survived the filter — cannot be found by reading any single file.
+4. **Code Conventions:** Only human conventions with zero tooling enforcement.
+5. Total under 100 lines.
+6. Commands section is first.
 
 **Pause for user approval.**
 
