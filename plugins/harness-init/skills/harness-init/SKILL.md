@@ -50,39 +50,35 @@ Check: `CLAUDE.md`, `.claude/`, `.claude/settings.json`, `.claude/rules/`, `.cla
 
 Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO → cut it.
 
-### The Code-Readable Filter
+### The Code-Readable Filter (mandatory, mechanical)
 
-Before writing ANY line, ask: **"Can Claude figure this out by reading the code?"**
+After drafting CLAUDE.md, apply this filter to EVERY line. This is not optional.
 
-Apply this filter to EVERY line BEFORE including it. No exceptions.
+**For each line, run this test:**
+```
+1. Does this information exist in ANY file in the repo?
+   (source code, config, schema, package.json, tsconfig, README...)
+   → YES → DELETE the line. No exceptions.
+   → NO → go to step 2.
 
-**CUT if Claude can learn it from:**
-- `package.json`, `tsconfig.json`, linter configs → language/module settings
-- Source code → function signatures, patterns, data types
-- Schema/migration files → DB constraints, indexes
-- Import graph → what depends on what, which models/DBs are used
-- Config files → model names, ports, process names
+2. Could Claude discover this by reading the relevant file?
+   (function signatures, import patterns, DB schema, config values...)
+   → YES → DELETE the line.
+   → NO → KEEP. This is genuine operational knowledge.
+```
 
-**KEEP only if it requires:**
-- Operational experience ("build없이 배포하면 깨진다")
-- Hidden conventions not in code (".env must be in agent-server/, not root")
-- Business/cost reasons ("SDK calls cost money — mock in tests")
-- Multi-file coupling that's easy to miss ("routing logic split across 2 files")
-- Intentional workarounds ("don't remove `as never` — it's deliberate")
+**After filtering, count surviving lines per section:**
+- **How It Works:** MAX 2 lines. If more → you included code-readable content.
+- **Things That Will Bite You:** Each item must fail BOTH tests above. If Claude could find it by reading one file, it's not a gotcha.
+- **Code Conventions:** If a linter, tsconfig, or .editorconfig enforces it → DELETE.
 
-**Section-specific filters:**
-
-**How It Works:** One data flow sentence ONLY. CUT any line that names specific files, models, databases, or tech choices. Claude reads `package.json` and imports — it knows your stack.
-- BAD: "IntentAgent는 Haiku로 파싱, SessionAgent는 Opus로 코딩, 데이터는 SQLite + Neo4j + sqlite-vec"
-- GOOD: "Slack event → Gateway → Orchestrator → Domain Agent → SDK query()"
-
-**Things That Will Bite You:** ONLY items impossible to discover from code. If Claude can find it by reading a schema, config, or source file — it's NOT a gotcha, it's just code.
-- BAD: "SessionStore has UNIQUE index on (channelId, threadTs)" — schema says this
-- GOOD: "DM 세션 생성 전 기존 default를 닫아야 함 — 안하면 UNIQUE 에러" — the WORKFLOW is the gotcha, not the constraint
-
-**Code Conventions:** ZERO items that linter/formatter configs already enforce. Only human conventions with no tooling enforcement.
-- BAD: "TypeScript strict mode" — tsconfig says this
-- GOOD: "`as never` 캐스트는 의도적 — 제거하지 마라" — no config enforces this
+**Common traps — these ALWAYS fail the filter:**
+- Model names (Haiku, Opus) → config/code says this
+- Database choices (SQLite, Neo4j) → package.json/imports say this
+- Code patterns (factory, DI) → code shows this
+- Framework features (WAL mode, graceful fallback) → code implements this
+- Listen addresses (127.0.0.1) → code says this
+- Type file locations (shared/types.ts) → code navigation finds this
 
 ### Template (Anthropic pattern)
 
