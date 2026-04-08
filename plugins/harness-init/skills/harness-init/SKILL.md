@@ -172,6 +172,8 @@ Claude Code hooks are **deterministic** (100% enforcement) unlike CLAUDE.md (~70
 
 Configure hooks based on what Step 1 found. Only for tools that exist in the project. Prioritize hooks that prevent real damage over convenience automation.
 
+**Never hardcode absolute paths in hook commands.** Use relative paths, `$PWD`, or project-relative resolution. Hooks with absolute paths break when the project moves or another developer clones it.
+
 **Pause for user approval.**
 
 ## Step 6: Scaffold Skills & Subagents
