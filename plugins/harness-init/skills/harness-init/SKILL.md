@@ -99,7 +99,53 @@ Behavioral rules are not invented — they are **derived from observed patterns*
 | 8 | **Error handling patterns** | `catch` blocks, custom error classes, error middleware | Identify consistent patterns → "Throw X, handle with Y" | .claude/rules/ or Code Style |
 | 9 | **Non-obvious behaviors** | README troubleshooting, comments with "NOTE"/"HACK"/"WORKAROUND" | Identify gotchas that would trip up a newcomer | Gotchas |
 
-**Derivation rule:** If you cannot point to the specific file + line where you observed the pattern, do not write the rule. No rules from assumption.
+**Derivation rule:** For rows 1-9, if you cannot point to the specific file + line where you observed the pattern, do not write the rule.
+
+### Behavioral Rules: 3-Layer System
+
+Generate `.claude/rules/` files from three layers. Each layer adds rules — they don't replace each other.
+
+**Layer 1: Generic (always apply)**
+
+Every project gets these. They prevent universal agent failure patterns.
+
+```markdown
+# .claude/rules/agent-behavior.md
+# Debugging
+- ALWAYS find the root cause before giving a solution. Patching without understanding is not allowed.
+- Do not suppress errors with try/catch to hide failures. Fix the source.
+- If a test fails, diagnose why — do not weaken the test or change timeouts to fake a pass.
+
+# Testing integrity
+- Never modify existing tests to make them pass — fix the implementation instead.
+- Write a failing test that reproduces the bug BEFORE fixing it.
+- No mock-echo tests: if removing the code under test wouldn't fail the test, the test is worthless.
+- Test behavior, not implementation details.
+
+# Completion
+- Do not claim "done" without running the test/lint suite and showing the output.
+- Do what was asked, nothing more. No gold-plating, no unrequested refactors.
+```
+
+**Layer 2: Tech Stack (match detected stack)**
+
+Select rules matching the tech stack found in Step 1. Only include sections that apply.
+
+| Tech Stack | Rules to add | File |
+|-----------|-------------|------|
+| **TypeScript/JavaScript** | Strict mode, no `any`, prefer `unknown`. No `console.log` in production — use a logger. Check `tsconfig.json` strictness and enforce it. | `.claude/rules/typescript.md` |
+| **React/Frontend** | Test user behavior not component internals. Use Testing Library queries (getByRole > getByTestId). No snapshot tests unless explicitly requested. | `.claude/rules/frontend.md` |
+| **Python** | Type hints on public functions. Use `pytest` fixtures over `setUp`/`tearDown`. No bare `except:`. | `.claude/rules/python.md` |
+| **Rust** | Run `cargo clippy` before suggesting code. Use `thiserror` for library errors, `anyhow` for application errors. No `unwrap()` in production code. | `.claude/rules/rust.md` |
+| **Go** | Handle every error — no `_` for errors. Table-driven tests. `golangci-lint` before commit. | `.claude/rules/go.md` |
+| **Database/ORM** | Never write raw SQL if an ORM/query builder exists. Always use transactions for multi-step writes. Test with real DB, not mocks. | `.claude/rules/database.md` |
+| **API/Backend** | Validate all inputs at the boundary. Never trust request bodies. Use typed error responses. | `.claude/rules/api.md` |
+
+Customize these based on what the project's config files actually enforce. If `tsconfig.json` has `strict: false`, don't add strict mode rules.
+
+**Layer 3: Project-specific (from Step 1 analysis)**
+
+Derived from the 9 observation sources in the Derivation Framework above. These are unique to this project.
 
 ### What to INCLUDE vs EXCLUDE
 
