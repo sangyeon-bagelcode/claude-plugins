@@ -136,45 +136,24 @@ The "## Guidelines" section in the CLAUDE.md template above IS Layer 1. It goes 
 
 Based on Karpathy's validated guidelines (think before coding, simplicity first, surgical changes, goal-driven execution) + community-validated root cause debugging. Customize wording to match the project's tone, but keep all 6 bullet points.
 
-### Layer 2: Tech Stack + Testing (match detected stack)
+### Layer 2 & 3: Rules files
 
-Generate per-stack rules. Include testing rules specific to that stack's test framework.
+**The same Code-Readable Filter applies to rules.** Rules are behavioral guidance, not code documentation. If a linter, compiler, or the code itself already enforces/shows something, it does not go in a rule.
 
-| Stack | Key rules | File |
-|-------|----------|------|
-| TypeScript | No `any` (use `unknown`), check tsconfig strictness | `.claude/rules/typescript.md` |
-| React | Test user behavior not internals, getByRole > getByTestId | `.claude/rules/frontend.md` |
-| Python | Type hints on public functions, pytest fixtures, no bare `except:` | `.claude/rules/python.md` |
-| Rust | `cargo clippy` first, no `unwrap()` in production | `.claude/rules/rust.md` |
-| Go | Handle every error, table-driven tests | `.claude/rules/go.md` |
-
-Add testing rules based on what Step 1 found:
+Generate `testing.md` for every project that has tests — these are behavioral rules, not code descriptions:
 
 ```markdown
-# .claude/rules/testing.md (example — customize per project)
+# .claude/rules/testing.md
 ---
 paths: ["**/*.test.*", "**/*.spec.*"]
 ---
-- Write a failing test BEFORE fixing any bug. (motion pattern)
-- Never modify existing tests to make them pass — fix the implementation. (Cribo)
-- Test behavior, not implementation. Mock only at boundaries. (community consensus)
+- Write a failing test BEFORE fixing any bug.
+- Never modify existing tests to make them pass — fix the implementation.
+- Test behavior, not implementation. Mock only at boundaries.
 - Never use weak assertions (toBeDefined, toBeTruthy). Assert specific values.
 ```
 
-Customize based on what the project's config and test patterns actually show.
-
-### Layer 3: Project-specific (from Step 1)
-
-Derived from the scan. Use `paths:` frontmatter to scope rules:
-
-```markdown
-# .claude/rules/api.md
----
-paths: ["src/api/**", "src/routes/**"]
----
-- Validate all inputs with zod before processing
-- Use kebab-case for URL paths
-```
+For other rules files, only create them if KEEP items survive the filter. Apply `paths:` frontmatter to scope them. Do NOT create rules files that merely describe existing code patterns — Claude reads code.
 
 **Pause for user approval.**
 
@@ -191,54 +170,19 @@ Claude Code hooks are **deterministic** (100% enforcement) unlike CLAUDE.md (~70
 | `Notification` | Alert on specific patterns | Warn when editing security-sensitive files |
 | `Stop` | Enforce checks before session ends | Require test pass before claiming done |
 
-### Auto-detect from tooling
-
-| Detected | Hook | Command |
-|----------|------|---------|
-| ESLint/Biome | PostToolUse (Edit) | `npx eslint --fix {file}` |
-| Prettier | PostToolUse (Edit) | `npx prettier --write {file}` |
-| TypeScript | PostToolUse (Edit) | `npx tsc --noEmit` |
-
-Only configure hooks for tools that actually exist in the project.
+Configure hooks based on what Step 1 found. Only for tools that exist in the project. Prioritize hooks that prevent real damage over convenience automation.
 
 **Pause for user approval.**
 
 ## Step 6: Scaffold Skills & Subagents
 
-### Project-specific skills (.claude/skills/)
+Only create skills/subagents if the project has clear, repeatable workflows that would benefit from them. Ask the user before scaffolding — don't assume.
 
-If the project has repeatable workflows, create skills for them:
+**Skills (.claude/skills/):** For repeatable multi-step workflows the user invokes by name.
+**Subagents (.claude/agents/):** For tasks that need isolated context with specific tool permissions.
+**Plugin recommendations:** Match project needs to available plugins. Present to user, don't auto-install.
 
-```markdown
-# .claude/skills/fix-issue/SKILL.md
----
-name: fix-issue
-description: Fix a GitHub issue with test-first approach
----
-1. `gh issue view $ARGUMENTS` — read the actual issue
-2. Write a failing test that reproduces it
-3. Fix the implementation
-4. Run full test suite
-5. Commit and create PR
-```
-
-### Subagents (.claude/agents/)
-
-For projects with distinct domains, scaffold specialized subagents:
-
-```markdown
-# .claude/agents/security-reviewer.md
----
-name: security-reviewer
-tools: Read, Grep, Glob
----
-Review code for injection vulnerabilities, auth flaws, and secrets in code.
-Provide specific line references and fixes.
-```
-
-### Plugin recommendations
-
-Match project needs to available plugins. Present to user, don't auto-install.
+If the project is simple or early-stage, skip this step entirely. Not every project needs custom skills or subagents.
 
 ## Step 7: Verify Setup
 
@@ -247,7 +191,7 @@ Match project needs to available plugins. Present to user, don't auto-install.
 | CLAUDE.md exists, Commands first | Commands is the first content section |
 | CLAUDE.md ~100 lines | Under 150 lines |
 | Gotchas section has 2+ items | Non-obvious behaviors documented |
-| .claude/rules/ has path-scoped files | At least 1 rule file per distinct domain |
+| .claude/rules/ if created | Every rule passed Code-Readable Filter |
 | settings.json valid JSON | Parses without errors |
 | Hook commands exist | `which <cmd>` or `node_modules/.bin/` check |
 | No overwrites of user config | Existing customizations preserved |
@@ -268,6 +212,6 @@ Match project needs to available plugins. Present to user, don't auto-install.
 
 **A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
 
-## Anti-Pattern: "Blindly Copy Generic Rules"
+## Anti-Pattern: "Fill Empty Sections"
 
-The 3-layer system provides a menu, not a checklist. An agent that dumps all 20 generic rules into every project is defeating the purpose. Pick 5-6 that address real risks for THIS project. If the project has no tests, testing integrity rules are higher priority than code style rules.
+If no KEEP items survive the filter for a section (Code Conventions, Workflow, rules files), leave it out. Do not fill sections with code-readable content to avoid empty space. Less is more.
