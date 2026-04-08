@@ -87,6 +87,14 @@ Before writing ANY line, ask: **"Can Claude figure this out by reading the code?
 ## Things That Will Bite You
 {Non-obvious behaviors, tribal knowledge. HIGHEST VALUE section.}
 
+## Guidelines
+- State assumptions explicitly. If uncertain, ask — don't guess silently.
+- Minimum code that solves the problem. No speculative features or abstractions.
+- Every changed line must trace to the request. Don't "improve" unrelated code.
+- Transform tasks into verifiable goals: "Fix bug" → "Write reproducing test, then fix."
+- Find root cause before patching. STOP and reason when anything fails.
+- Run tests after every change. Do not claim done without output.
+
 ## Code Conventions
 {ONLY rules that differ from defaults. Imperative tone.}
 
@@ -115,33 +123,15 @@ For monorepos, use subdirectory CLAUDE.md files — they load on demand when Cla
 
 ## Step 4: Generate .claude/rules/
 
-### Layer 1: Generic (select 5-6 most relevant for this project)
+### Layer 1: Agent Behavioral Guide → lives in CLAUDE.md
 
-Source: validated across netdata, motion, Cribo, Anthropic official guidance, Karpathy.
+The "## Guidelines" section in the CLAUDE.md template above IS Layer 1. It goes directly in CLAUDE.md, not in a separate rules file.
 
-```markdown
-# .claude/rules/agent-behavior.md
-# Root cause first (netdata, motion, Cribo)
-- Find the root cause before giving a solution. Patching without understanding is not allowed.
-- When anything fails, STOP and output your reasoning before touching code.
+Based on Karpathy's validated guidelines (think before coding, simplicity first, surgical changes, goal-driven execution) + community-validated root cause debugging. Customize wording to match the project's tone, but keep all 6 bullet points.
 
-# Testing integrity (motion, Cribo)
-- Write a failing test that reproduces the bug BEFORE fixing it.
-- Never modify existing tests to make them pass — fix the implementation.
-- Test behavior, not implementation. Mock only at boundaries.
+### Layer 2: Tech Stack + Testing (match detected stack)
 
-# Surgical changes (Karpathy)
-- Every changed line should trace directly to what was asked. No unrequested refactors.
-- If 200 lines can be 50, rewrite it.
-- Check if logic already exists before writing new code.
-
-# Verification (Anthropic official)
-- Run lint and test suite after completing work. Do not claim done without output.
-```
-
-Do NOT copy all of these blindly. Pick 5-6 rules that address **real risks** for this specific project.
-
-### Layer 2: Tech Stack (match detected stack)
+Generate per-stack rules. Include testing rules specific to that stack's test framework.
 
 | Stack | Key rules | File |
 |-------|----------|------|
@@ -151,7 +141,20 @@ Do NOT copy all of these blindly. Pick 5-6 rules that address **real risks** for
 | Rust | `cargo clippy` first, no `unwrap()` in production | `.claude/rules/rust.md` |
 | Go | Handle every error, table-driven tests | `.claude/rules/go.md` |
 
-Customize based on what the project's config actually enforces.
+Add testing rules based on what Step 1 found:
+
+```markdown
+# .claude/rules/testing.md (example — customize per project)
+---
+paths: ["**/*.test.*", "**/*.spec.*"]
+---
+- Write a failing test BEFORE fixing any bug. (motion pattern)
+- Never modify existing tests to make them pass — fix the implementation. (Cribo)
+- Test behavior, not implementation. Mock only at boundaries. (community consensus)
+- Never use weak assertions (toBeDefined, toBeTruthy). Assert specific values.
+```
+
+Customize based on what the project's config and test patterns actually show.
 
 ### Layer 3: Project-specific (from Step 1)
 
