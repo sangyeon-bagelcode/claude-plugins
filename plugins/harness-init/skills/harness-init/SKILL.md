@@ -62,7 +62,10 @@ Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO �
 {1-3 sentences. Brief, factual.}
 
 ## How It Works
-{Key directories, entrypoints, data flow. Just enough to navigate.}
+{3-5 lines MAX. One-sentence data flow + key entrypoint. That's it.}
+{NO directory trees. NO file-by-file descriptions. Claude reads files itself.}
+{BAD: listing src/agents/session.ts — "SDK query() 호출, 보안 훅, 프롬프트 빌드"}
+{GOOD: "Slack event → Gateway(normalize) → Orchestrator(route) → Agent → SDK query()"}
 
 ## Things That Will Bite You
 {Non-obvious behaviors, tribal knowledge. HIGHEST VALUE section.}
@@ -85,7 +88,8 @@ For monorepos, use subdirectory CLAUDE.md files — they load on demand when Cla
 
 - Commands section is first and exists
 - "Things That Will Bite You" has 2+ non-obvious items
-- No README content (tech stack lists, file-by-file descriptions)
+- No README content: NO directory trees, NO file-by-file descriptions, NO tech stack lists
+- "How It Works" is 3-5 lines max — if you wrote a directory tree, delete it and write a data flow sentence
 - Every line is actionable — not background info
 - Imperative factual tone: "Runtime is Bun, not Node." not "Please note that..."
 
@@ -229,6 +233,8 @@ Match project needs to available plugins. Present to user, don't auto-install.
 | "This project uses TypeScript and React" | "Runtime is Bun, not Node. Use bun test, not jest." |
 | "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body" |
 | "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>`, never the full suite" |
+| Directory tree with file descriptions | One-sentence data flow: "Event → Gateway → Agent → SDK" |
+| `session.ts — SDK query() 호출, 보안 훅` | "`query()` is async iterator. Always mock in tests — no real API calls." |
 
 **A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
 
