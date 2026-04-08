@@ -67,18 +67,7 @@ After drafting CLAUDE.md, apply this filter to EVERY line. This is not optional.
    → NO → KEEP. This is genuine operational knowledge.
 ```
 
-**After filtering, count surviving lines per section:**
-- **How It Works:** MAX 2 lines. If more → you included code-readable content.
-- **Things That Will Bite You:** Each item must fail BOTH tests above. If Claude could find it by reading one file, it's not a gotcha.
-- **Code Conventions:** If a linter, tsconfig, or .editorconfig enforces it → DELETE.
-
-**Common traps — these ALWAYS fail the filter:**
-- Model names (Haiku, Opus) → config/code says this
-- Database choices (SQLite, Neo4j) → package.json/imports say this
-- Code patterns (factory, DI) → code shows this
-- Framework features (WAL mode, graceful fallback) → code implements this
-- Listen addresses (127.0.0.1) → code says this
-- Type file locations (shared/types.ts) → code navigation finds this
+Every line in the draft must pass both tests. No exceptions, no "but this is useful" overrides. If it exists in the repo, Claude will find it.
 
 ### Template (Anthropic pattern)
 
