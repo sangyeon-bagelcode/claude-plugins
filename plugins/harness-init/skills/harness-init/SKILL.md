@@ -50,6 +50,23 @@ Check: `CLAUDE.md`, `.claude/`, `.claude/settings.json`, `.claude/rules/`, `.cla
 
 Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO → cut it.
 
+### The Code-Readable Filter
+
+Before writing ANY line, ask: **"Can Claude figure this out by reading the code?"**
+
+| Can Claude read it? | Example | Action |
+|---------------------|---------|--------|
+| `package.json` → ESM, `.js` extensions | "ESM only. 모든 import에 .js 필수." | **CUT** — tsconfig + package.json에서 유추 가능 |
+| Source code → function signatures | "`query()` is async iterator" | **CUT** — 타입 시그니처 읽으면 보임 |
+| Schema/migration → DB constraints | "UNIQUE 제약: (channelId, threadTs)" | **CUT** — 스키마 읽으면 보임 |
+| Code patterns → factory, DI | "factory 패턴: `createXxxAgent()`" | **CUT** — 코드 읽으면 보임 |
+| NO way to know from code | ".env는 agent-server/.env에 위치해야 함" | **KEEP** — 위치 convention은 코드에 없음 |
+| Operational experience only | "build 없이 프로덕션 배포하면 깨진다" | **KEEP** — 운영 경험에서만 알 수 있음 |
+| Hidden coupling | "PM2 프로세스 이름은 gamja — ecosystem.config.cjs" | **KEEP** — 찾기 어려운 설정 |
+
+**CLAUDE.md에 남는 것:** 코드를 아무리 읽어도 절대 알 수 없거나 찾기 어려운 것만.
+**나머지는 전부 .claude/rules/에 넣거나 제거.**
+
 ### Template (Anthropic pattern)
 
 ```markdown
@@ -86,12 +103,13 @@ For monorepos, use subdirectory CLAUDE.md files — they load on demand when Cla
 
 ### Validation
 
+- **Code-Readable Filter passed** — go line by line: if Claude can learn it from reading code/config, DELETE it
 - Commands section is first and exists
-- "Things That Will Bite You" has 2+ non-obvious items
-- No README content: NO directory trees, NO file-by-file descriptions, NO tech stack lists
-- "How It Works" is 3-5 lines max — if you wrote a directory tree, delete it and write a data flow sentence
-- Every line is actionable — not background info
-- Imperative factual tone: "Runtime is Bun, not Node." not "Please note that..."
+- "Things That Will Bite You" has 2+ items that are IMPOSSIBLE to know from code alone
+- "How It Works" is 3-5 lines max — data flow sentence, not directory tree
+- "Code Conventions" contains ZERO items Claude can infer from linter configs or code patterns
+- Total under 100 lines (150 max for complex projects)
+- Imperative factual tone
 
 **Pause for user approval.**
 
@@ -234,7 +252,9 @@ Match project needs to available plugins. Present to user, don't auto-install.
 | "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body" |
 | "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>`, never the full suite" |
 | Directory tree with file descriptions | One-sentence data flow: "Event → Gateway → Agent → SDK" |
-| `session.ts — SDK query() 호출, 보안 훅` | "`query()` is async iterator. Always mock in tests — no real API calls." |
+| "`query()` is async iterator" (code-readable) | "`query()` SDK calls cost money — always mock in tests" (operational) |
+| "ESM only, .js extensions required" (tsconfig says it) | ".env must be in agent-server/, not project root" (convention) |
+| "factory pattern: createXxxAgent()" (code says it) | "build없이 프로덕션 배포하면 깨진다" (operational experience) |
 
 **A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
 
