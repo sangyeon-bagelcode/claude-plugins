@@ -100,10 +100,12 @@ Step 3: Write CLAUDE.md using ONLY the surviving candidates. The draft must cont
 - Run tests after every change. Do not claim done without output.
 
 ## Code Conventions
-{ONLY rules that differ from defaults. Imperative tone.}
+{ONLY if KEEP items exist for this section. If all conventions are enforced by
+tooling or visible in code, OMIT THIS SECTION ENTIRELY. An empty section is
+worse than no section — it invites filler.}
 
 ## Workflow
-{Branch naming, PR conventions, CI checks — if applicable}
+{ONLY if KEEP items exist. Omit if no non-obvious workflow rules.}
 ```
 
 Use `@path/to/file` imports to reference detailed docs without bloating CLAUDE.md:
@@ -120,7 +122,7 @@ Before presenting the draft, verify:
 1. **Show your filter work.** List each candidate fact and whether it passed or failed the 2-question test. Present this table to the user alongside the draft so they can verify.
 2. **How It Works:** Max 1-2 sentences. Data flow only.
 3. **Things That Will Bite You:** Each item survived the filter — cannot be found by reading any single file.
-4. **Code Conventions:** Only human conventions with zero tooling enforcement.
+4. **Code Conventions / Workflow:** Only KEEP items. If no KEEP items exist for a section, omit the section entirely.
 5. Total under 100 lines.
 6. Commands section is first.
 
