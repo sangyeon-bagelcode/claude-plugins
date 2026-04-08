@@ -107,24 +107,37 @@ Generate `.claude/rules/` files from three layers. Each layer adds rules — the
 
 **Layer 1: Generic (always apply)**
 
-Every project gets these. They prevent universal agent failure patterns.
+Every project gets these. They address agent failure patterns validated across multiple high-adoption projects (netdata, motion, Cribo, Anthropic official guidance, 37k+ star awesome-claude-code).
+
+Select the rules below that are relevant. Do NOT blindly copy all of them — the CLAUDE.md attention budget is limited (~150-200 instructions total). Pick the ones that address real risks for this project.
 
 ```markdown
 # .claude/rules/agent-behavior.md
-# Debugging
+
+# Debugging — from netdata (40k stars), motion, Cribo
 - ALWAYS find the root cause before giving a solution. Patching without understanding is not allowed.
-- Do not suppress errors with try/catch to hide failures. Fix the source.
-- If a test fails, diagnose why — do not weaken the test or change timeouts to fake a pass.
+- When anything fails, STOP. Think. Output your reasoning. Do not touch anything until you understand the actual cause.
+- If tracing a code path is inconclusive after 2-3 rounds, step back and look at adjacent systems. Pivot fast.
+- Check git history early: run `git log --grep` to see if the bug was already fixed or if prior commits reveal the cause.
+- Never suppress errors or add try/catch to hide failures. Always raise errors explicitly.
 
-# Testing integrity
-- Never modify existing tests to make them pass — fix the implementation instead.
-- Write a failing test that reproduces the bug BEFORE fixing it.
-- No mock-echo tests: if removing the code under test wouldn't fail the test, the test is worthless.
-- Test behavior, not implementation details.
+# Testing — from motion, Cribo, rohitg00/awesome-claude-code-toolkit
+- Write a failing test that reproduces the bug BEFORE fixing it. Do not proceed without a test that fails for the right reason.
+- Never modify existing tests to make them pass — fix the implementation instead. Tests on main are always working.
+- Test behavior, not implementation. Tests should survive refactoring.
+- Mock only at boundaries (HTTP, DB, filesystem, clock). Never mock the unit under test.
+- Get to a test fast. Most bugs are found faster through testing than through code reading.
 
-# Completion
-- Do not claim "done" without running the test/lint suite and showing the output.
-- Do what was asked, nothing more. No gold-plating, no unrequested refactors.
+# Code discipline — from markomitranic, kirill-markin, abhishekray07
+- Check if logic already exists before writing new code. Never duplicate.
+- NEVER assume a library is available. Check the codebase uses it before importing.
+- When making changes, first understand the file's code conventions. Mimic existing style.
+- Keep changes minimal and related to the current request. No unrequested refactors.
+- Explain before removing (Chesterton's Fence) — articulate why something exists before deleting it.
+
+# Safety — from Anthropic official, markomitranic, ctoth
+- Never commit unless explicitly asked. `git add .` is forbidden — add files individually.
+- Run the lint and test suite after completing a task. Do not claim done without showing output.
 ```
 
 **Layer 2: Tech Stack (match detected stack)**
