@@ -6,404 +6,232 @@ description: Use when setting up Claude Code for a new project, onboarding to a 
 # Harness Init
 
 <HARD-GATE>
-Do NOT produce any configuration files until ALL 6 steps below are complete.
-Steps: scan project → audit existing harness → generate CLAUDE.md
-       → configure settings/hooks → recommend skills → verify setup
-Producing a generic CLAUDE.md template, partial configuration, or "quick setup"
-before completing all steps violates this gate.
+Do NOT produce any configuration files until ALL 7 steps below are complete.
+Steps: scan → audit → CLAUDE.md → rules → hooks → skills/subagents → verify
 </HARD-GATE>
 
 ## Checklist
 
-Complete every step in order. Do not skip, reorder, or abbreviate.
-
-1. **Scan project** — Systematically analyze the project to understand its characteristics. Read actual code files, not just directory listings.
-2. **Audit existing harness** — Check for existing Claude Code configuration and plan merge strategy.
-3. **Generate CLAUDE.md** — Produce project-specific instructions derived from Step 1 analysis. *(pause for user approval before writing)*
-4. **Configure settings/hooks** — Set up appropriate hooks based on detected project tooling. *(pause for user approval before writing)*
-5. **Recommend skills** — Match project needs to available skills.
-6. **Verify setup** — Confirm all artifacts are valid and non-conflicting.
+1. **Scan project** — Read actual code files (min 5 source + all configs). Not just directory listings.
+2. **Audit existing harness** — Check CLAUDE.md, .claude/, AGENTS.md. Plan merge or fresh creation.
+3. **Generate CLAUDE.md** — Behavioral guide, not README. *(pause for user approval)*
+4. **Generate .claude/rules/** — 3-layer behavioral rules. *(pause for user approval)*
+5. **Configure hooks** — Claude Code lifecycle hooks + settings.json. *(pause for user approval)*
+6. **Scaffold skills & subagents** — Create project-specific skills, recommend plugins, scaffold subagents if needed.
+7. **Verify setup** — Validate all artifacts.
 
 ---
 
 ## Step 1: Scan Project
 
-Analyze these dimensions by reading actual files — not guessing from file names:
+| What to look for | Key files | Feeds into |
+|-----------------|-----------|------------|
+| Build/test/lint/run commands | `package.json` scripts, `Makefile` | CLAUDE.md Commands |
+| Config non-defaults | `.eslintrc*`, `tsconfig.json`, `.prettierrc*` | rules/ Code Style |
+| Repeated code patterns (5+ files) | Source files across modules | rules/ Code Style |
+| Module boundaries & import graph | `src/` subdirectories, entry points | CLAUDE.md Architecture |
+| Test conventions (mock vs fixture) | Test files, test config, fixtures dir | rules/testing.md |
+| CI pipeline & branch rules | `.github/workflows/`, `.gitlab-ci.yml` | CLAUDE.md Workflow |
+| Environment dependencies | `.env.example`, `docker-compose.yml` | CLAUDE.md Gotchas |
+| Non-obvious behaviors | NOTE/HACK/WORKAROUND comments, git reverts | CLAUDE.md Gotchas |
 
-| Dimension | What to look for | Key files to read | Feeds into (Step 3) |
-|-----------|-----------------|-------------------|---------------------|
-| **Config non-defaults** | Linter/formatter/compiler settings that differ from tool defaults | `.eslintrc*`, `.prettierrc*`, `tsconfig.json`, `biome.json`, `.editorconfig` | Code Style rules |
-| **Code patterns** | Repeated import styles, error handling, naming across modules | 5+ source files from different directories | Code Style / Architecture rules |
-| **Module boundaries** | Which modules import from which, layering, forbidden cross-imports | Entry points + key source files in each `src/` subdirectory | Architecture Decisions |
-| **Package scripts** | Exact build/test/lint/run commands with flags and env vars | `package.json` scripts, `Makefile` targets | Commands section |
-| **CI pipeline** | Required checks, step order, branch rules | `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` | Workflow rules |
-| **Environment deps** | Required env vars, local services, setup prerequisites | `.env.example`, `docker-compose.yml`, README setup section | Commands / Gotchas |
-| **Test conventions** | Mock vs fixture, test file patterns, framework-specific idioms | Test files, `jest.config.*`, `vitest.config.*`, `pytest.ini`, fixtures dir | .claude/rules/testing.md |
-| **Error handling** | Custom error classes, catch patterns, error middleware | Error files, middleware, catch blocks across codebase | Code Style / rules/ |
-| **Non-obvious behaviors** | Comments with NOTE/HACK/WORKAROUND/TODO, known gotchas | README troubleshooting, inline comments, git blame for reverts | Gotchas section |
-
-**Minimum reads:** At least 5 actual source files + all detected config files. Directory listings alone are insufficient.
-
-**Goal of scanning:** Every observation here must feed into a concrete behavioral rule in Step 3. If an observation doesn't produce a rule, it was unnecessary.
-
-Tools: Glob, Grep, Read, Bash
+Every observation must feed into a concrete rule. If it doesn't produce a rule, it was unnecessary.
 
 ## Step 2: Audit Existing Harness
 
-Check for existing configuration:
+Check: `CLAUDE.md`, `.claude/`, `.claude/settings.json`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `AGENTS.md`
 
-```
-CLAUDE.md at project root          → exists? contents?
-CLAUDE.md in subdirectories        → exists? contents?
-.claude/ directory                 → exists? contents?
-.claude/settings.json              → exists? current rules/hooks?
-.claude/rules/                     → exists? what rules?
-.claude/skills/                    → exists? what skills?
-AGENTS.md / GEMINI.md              → exists? contents?
-```
+- Existing config → merge, preserve user customizations
+- No config → create fresh
 
-**If existing config found:**
-- Plan to MERGE with existing, preserving all user customizations
-- Identify gaps (missing sections, outdated info)
-- Never overwrite without explicit user approval
+## Step 3: Generate CLAUDE.md
 
-**If no config found:**
-- Plan to create fresh configuration
-- Note any `.gitignore` patterns that affect `.claude/`
+**~100 lines ideal** (Boris Cherny, Claude Code creator). Max 150 for complex projects.
 
-Tools: Glob, Read
+Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO → cut it.
 
-## Step 3: Generate CLAUDE.md + .claude/rules/
-
-CLAUDE.md is a **behavioral guide**, NOT a README. It tells Claude HOW to work in this project — not WHAT the project is. Target **under 200 lines** for high adherence.
-
-### The Golden Rule
-
-For every line, ask: **"Would removing this cause Claude to make mistakes?"**
-- YES → keep it
-- NO → cut it. Claude can figure it out by reading code.
-
-### Pattern → Rule Derivation Framework
-
-Behavioral rules are not invented — they are **derived from observed patterns**. For each source below, apply the conversion method to produce actionable rules.
-
-| # | Observation Source | What to Read | Conversion Method | Output Section |
-|---|-------------------|-------------|-------------------|----------------|
-| 1 | **Config non-defaults** | `.eslintrc`, `.prettierrc`, `tsconfig.json`, `biome.json`, `rustfmt.toml` | Extract every setting that **differs from tool defaults** → convert to imperative instruction | Code Style |
-| 2 | **Repeated code patterns** | 5+ source files across different modules | Identify patterns present in **all or most** files (import style, error handling, naming) → "Always do X" | Code Style |
-| 3 | **Module boundaries** | Import graph across `src/` directories | Identify which modules import from which → "Never import X from Y directly" | Architecture Decisions |
-| 4 | **Package scripts & Makefile** | `package.json` scripts, `Makefile` targets | Extract exact commands with flags → include env vars and gotchas | Commands |
-| 5 | **CI pipeline** | `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` | Extract step order and required checks → "Always X before Y" | Workflow |
-| 6 | **Environment dependencies** | `.env.example`, `docker-compose.yml`, README setup section | Identify required services and env vars → "IMPORTANT: must set X" | Commands / Gotchas |
-| 7 | **Test conventions** | Test files, test config, fixtures directory | Identify test style (mock vs fixture, describe/it vs test) → "Use X, never Y" | .claude/rules/testing.md |
-| 8 | **Error handling patterns** | `catch` blocks, custom error classes, error middleware | Identify consistent patterns → "Throw X, handle with Y" | .claude/rules/ or Code Style |
-| 9 | **Non-obvious behaviors** | README troubleshooting, comments with "NOTE"/"HACK"/"WORKAROUND" | Identify gotchas that would trip up a newcomer | Gotchas |
-
-**Derivation rule:** For rows 1-9, if you cannot point to the specific file + line where you observed the pattern, do not write the rule.
-
-### Behavioral Rules: 3-Layer System
-
-Generate `.claude/rules/` files from three layers. Each layer adds rules — they don't replace each other.
-
-**Layer 1: Generic (always apply)**
-
-Every project gets these. They address agent failure patterns validated across multiple high-adoption projects (netdata, motion, Cribo, Anthropic official guidance, 37k+ star awesome-claude-code).
-
-Select the rules below that are relevant. Do NOT blindly copy all of them — the CLAUDE.md attention budget is limited (~150-200 instructions total). Pick the ones that address real risks for this project.
-
-```markdown
-# .claude/rules/agent-behavior.md
-
-# Debugging — from netdata (40k stars), motion, Cribo
-- ALWAYS find the root cause before giving a solution. Patching without understanding is not allowed.
-- When anything fails, STOP. Think. Output your reasoning. Do not touch anything until you understand the actual cause.
-- If tracing a code path is inconclusive after 2-3 rounds, step back and look at adjacent systems. Pivot fast.
-- Check git history early: run `git log --grep` to see if the bug was already fixed or if prior commits reveal the cause.
-- Never suppress errors or add try/catch to hide failures. Always raise errors explicitly.
-
-# Testing — from motion, Cribo, rohitg00/awesome-claude-code-toolkit
-- Write a failing test that reproduces the bug BEFORE fixing it. Do not proceed without a test that fails for the right reason.
-- Never modify existing tests to make them pass — fix the implementation instead. Tests on main are always working.
-- Test behavior, not implementation. Tests should survive refactoring.
-- Mock only at boundaries (HTTP, DB, filesystem, clock). Never mock the unit under test.
-- Get to a test fast. Most bugs are found faster through testing than through code reading.
-
-# Code discipline — from markomitranic, kirill-markin, abhishekray07
-- Check if logic already exists before writing new code. Never duplicate.
-- NEVER assume a library is available. Check the codebase uses it before importing.
-- When making changes, first understand the file's code conventions. Mimic existing style.
-- Keep changes minimal and related to the current request. No unrequested refactors.
-- Explain before removing (Chesterton's Fence) — articulate why something exists before deleting it.
-
-# Safety — from Anthropic official, markomitranic, ctoth
-- Never commit unless explicitly asked. `git add .` is forbidden — add files individually.
-- Run the lint and test suite after completing a task. Do not claim done without showing output.
-```
-
-**Layer 2: Tech Stack (match detected stack)**
-
-Select rules matching the tech stack found in Step 1. Only include sections that apply.
-
-| Tech Stack | Rules to add | File |
-|-----------|-------------|------|
-| **TypeScript/JavaScript** | Strict mode, no `any`, prefer `unknown`. No `console.log` in production — use a logger. Check `tsconfig.json` strictness and enforce it. | `.claude/rules/typescript.md` |
-| **React/Frontend** | Test user behavior not component internals. Use Testing Library queries (getByRole > getByTestId). No snapshot tests unless explicitly requested. | `.claude/rules/frontend.md` |
-| **Python** | Type hints on public functions. Use `pytest` fixtures over `setUp`/`tearDown`. No bare `except:`. | `.claude/rules/python.md` |
-| **Rust** | Run `cargo clippy` before suggesting code. Use `thiserror` for library errors, `anyhow` for application errors. No `unwrap()` in production code. | `.claude/rules/rust.md` |
-| **Go** | Handle every error — no `_` for errors. Table-driven tests. `golangci-lint` before commit. | `.claude/rules/go.md` |
-| **Database/ORM** | Never write raw SQL if an ORM/query builder exists. Always use transactions for multi-step writes. Test with real DB, not mocks. | `.claude/rules/database.md` |
-| **API/Backend** | Validate all inputs at the boundary. Never trust request bodies. Use typed error responses. | `.claude/rules/api.md` |
-
-Customize these based on what the project's config files actually enforce. If `tsconfig.json` has `strict: false`, don't add strict mode rules.
-
-**Layer 3: Project-specific (from Step 1 analysis)**
-
-Derived from the 9 observation sources in the Derivation Framework above. These are unique to this project.
-
-### What to INCLUDE vs EXCLUDE
-
-| INCLUDE | EXCLUDE |
-|---------|---------|
-| Commands Claude can't guess (`npm run dev:local --port 3001`) | Anything Claude can figure out by reading code |
-| Code style rules that **differ from defaults** | Standard language conventions Claude already knows |
-| Testing instructions and gotchas | Detailed API documentation (link to docs instead) |
-| Repo etiquette (branch naming, PR conventions) | Information that changes frequently |
-| Architectural decisions and **why** they were made | Long explanations or tutorials |
-| Common gotchas and non-obvious behaviors | File-by-file descriptions of the codebase |
-| Dev environment quirks (required env vars, local services) | Self-evident practices like "write clean code" |
-
-### CLAUDE.md Template
-
-Modeled after Anthropic's own CLAUDE.md files and well-maintained open source projects (Deno, LangChain). Sections are ordered by priority — commands first, gotchas before conventions.
+### Template (Anthropic pattern)
 
 ```markdown
 # {Project Name}
 
 ## Commands
-{Exact build, test, lint, run, format commands — only those Claude can't guess}
-{Include flags, env vars, and per-command gotchas}
+{Exact build/test/lint/run commands — ONLY those Claude can't guess}
 
 ## What This Is
-{1-3 sentences: what the project does, how it runs, single entrypoint if applicable}
-{Brief, factual, no marketing copy}
+{1-3 sentences. Brief, factual.}
 
 ## How It Works
-{Key directories, entrypoints, and data flow — HOW the system is organized}
-{NOT what every file does — just enough to navigate confidently}
+{Key directories, entrypoints, data flow. Just enough to navigate.}
 
 ## Things That Will Bite You
-{Non-obvious behaviors, tribal knowledge, common mistakes}
-{This is the highest-value section — encode what a new contributor learns the hard way}
+{Non-obvious behaviors, tribal knowledge. HIGHEST VALUE section.}
 
 ## Code Conventions
-{ONLY rules that differ from defaults — imperative tone, no explanations}
-{Example: "Runtime is Bun, not Node. Use bun test, not jest."}
+{ONLY rules that differ from defaults. Imperative tone.}
 
 ## Workflow
-{Branch naming, PR conventions, CI checks, deployment rules — if applicable}
+{Branch naming, PR conventions, CI checks — if applicable}
 ```
 
-**Tone:** Imperative, factual, minimal prose. "moduleResolution: bundler — imports don't need .js extensions." Not "Please make sure to use the correct module resolution setting."
+Use `@path/to/file` imports to reference detailed docs without bloating CLAUDE.md:
+```markdown
+See @docs/api-guide.md for API conventions.
+```
 
-**Length guide:**
-- Simple projects: 10-60 lines
-- Medium projects: 60-150 lines
-- Complex projects: 150-300 lines (split overflow to `.claude/rules/`)
+For monorepos, use subdirectory CLAUDE.md files — they load on demand when Claude works in that directory.
 
-### Create .claude/rules/ for Detailed Topics
+### Validation
 
-Split domain-specific rules into `.claude/rules/` files. Use `paths:` frontmatter so rules only load when relevant, saving context:
+- Commands section is first and exists
+- "Things That Will Bite You" has 2+ non-obvious items
+- No README content (tech stack lists, file-by-file descriptions)
+- Every line is actionable — not background info
+- Imperative factual tone: "Runtime is Bun, not Node." not "Please note that..."
+
+**Pause for user approval.**
+
+## Step 4: Generate .claude/rules/
+
+### Layer 1: Generic (select 5-6 most relevant for this project)
+
+Source: validated across netdata, motion, Cribo, Anthropic official guidance, Karpathy.
 
 ```markdown
-# .claude/rules/api-design.md
----
-paths:
-  - "src/api/**/*.ts"
-  - "src/routes/**/*.ts"
----
-- All API endpoints must validate input with zod schemas
-- Use kebab-case for URL paths, camelCase for JSON properties
-- Always include pagination for list endpoints
+# .claude/rules/agent-behavior.md
+# Root cause first (netdata, motion, Cribo)
+- Find the root cause before giving a solution. Patching without understanding is not allowed.
+- When anything fails, STOP and output your reasoning before touching code.
+
+# Testing integrity (motion, Cribo)
+- Write a failing test that reproduces the bug BEFORE fixing it.
+- Never modify existing tests to make them pass — fix the implementation.
+- Test behavior, not implementation. Mock only at boundaries.
+
+# Surgical changes (Karpathy)
+- Every changed line should trace directly to what was asked. No unrequested refactors.
+- If 200 lines can be 50, rewrite it.
+- Check if logic already exists before writing new code.
+
+# Verification (Anthropic official)
+- Run lint and test suite after completing work. Do not claim done without output.
 ```
+
+Do NOT copy all of these blindly. Pick 5-6 rules that address **real risks** for this specific project.
+
+### Layer 2: Tech Stack (match detected stack)
+
+| Stack | Key rules | File |
+|-------|----------|------|
+| TypeScript | No `any` (use `unknown`), check tsconfig strictness | `.claude/rules/typescript.md` |
+| React | Test user behavior not internals, getByRole > getByTestId | `.claude/rules/frontend.md` |
+| Python | Type hints on public functions, pytest fixtures, no bare `except:` | `.claude/rules/python.md` |
+| Rust | `cargo clippy` first, no `unwrap()` in production | `.claude/rules/rust.md` |
+| Go | Handle every error, table-driven tests | `.claude/rules/go.md` |
+
+Customize based on what the project's config actually enforces.
+
+### Layer 3: Project-specific (from Step 1)
+
+Derived from the scan. Use `paths:` frontmatter to scope rules:
 
 ```markdown
-# .claude/rules/testing.md
+# .claude/rules/api.md
 ---
-paths:
-  - "**/*.test.ts"
-  - "**/*.spec.ts"
+paths: ["src/api/**", "src/routes/**"]
 ---
-- Use describe/it blocks, not test()
-- Never mock the database — use test fixtures
-- Each test file must clean up its own state
+- Validate all inputs with zod before processing
+- Use kebab-case for URL paths
 ```
 
-Generate rules files for each distinct domain detected in Step 1 (API, testing, frontend components, database, etc.).
+**Pause for user approval.**
 
-### Validation Rules
+## Step 5: Configure Hooks
 
-1. **Length proportional to complexity** — Simple: 10-60, Medium: 60-150, Complex: 150-300 lines. Overflow goes to `.claude/rules/`
-2. **Commands section exists and is first** — Claude needs build/test/lint commands above all else
-3. **"Things That Will Bite You" section exists** — If you found zero gotchas, you didn't scan deeply enough
-4. **No generic advice** — Every instruction must trace to a specific observed project characteristic
-5. **Imperative factual tone** — Short declarative sentences, no tutorials, no personality instructions
-6. **Emphasis for critical rules** — Use "IMPORTANT" or "YOU MUST" sparingly, only for rules that cause real breakage
+Claude Code hooks are **deterministic** (100% enforcement) unlike CLAUDE.md (~70-80%). Use hooks for anything that MUST always happen.
 
-**Pause for user approval** before writing. Present the proposed CLAUDE.md and rules files, and ask the user to confirm or request changes.
+### Hook Event Types
 
-Tools: Write or Edit
+| Event | Use for | Example |
+|-------|---------|---------|
+| `PreToolUse` | Block dangerous actions before they happen | Block writes to `migrations/` without approval |
+| `PostToolUse` | Validate after tool actions | Run linter after file edits |
+| `Notification` | Alert on specific patterns | Warn when editing security-sensitive files |
+| `Stop` | Enforce checks before session ends | Require test pass before claiming done |
 
-## Step 4: Configure Settings/Hooks
+### Auto-detect from tooling
 
-Based on detected tooling from Step 1, configure `.claude/settings.json`:
+| Detected | Hook | Command |
+|----------|------|---------|
+| ESLint/Biome | PostToolUse (Edit) | `npx eslint --fix {file}` |
+| Prettier | PostToolUse (Edit) | `npx prettier --write {file}` |
+| TypeScript | PostToolUse (Edit) | `npx tsc --noEmit` |
 
-| Detected Tool | Hook Type | Example Configuration |
-|--------------|-----------|----------------------|
-| ESLint / Biome | Pre-commit (lint) | `npx eslint --fix` on staged files |
-| Prettier / dprint | Pre-commit (format) | `npx prettier --write` on staged files |
-| TypeScript | Pre-commit (typecheck) | `npx tsc --noEmit` |
-| Jest / Vitest / pytest | Test hook | `npm test` / `pytest` |
-| Ruff / Black | Pre-commit (format) | `ruff format` / `black` |
-| Clippy / rustfmt | Pre-commit (lint+format) | `cargo clippy` / `cargo fmt` |
+Only configure hooks for tools that actually exist in the project.
 
-**Rules:**
-- Only configure hooks for tools that actually exist in the project
-- Do not invent hooks for tools not in the dependency list
-- Use the `update-config` skill or direct settings.json editing
-- Respect existing hooks — add, don't replace
+**Pause for user approval.**
 
-**Pause for user approval** before writing settings. Present proposed hooks and ask the user to confirm.
+## Step 6: Scaffold Skills & Subagents
 
-Tools: Skill("update-config") or Edit
+### Project-specific skills (.claude/skills/)
 
-## Step 5: Recommend Skills
+If the project has repeatable workflows, create skills for them:
 
-Match project characteristics to available skills:
-
-| Project Characteristic | Recommended Skill | Rationale |
-|-----------------------|-------------------|-----------|
-| External library dependencies | `knowledge-bridge` | Prevents outdated API usage |
-| Complex/unfamiliar codebase | `repo-analyzer` | Deep architecture analysis |
-| Test infrastructure exists | `superpowers:test-driven-development` | Enforces test-first workflow |
-| Any project | `superpowers:systematic-debugging` | Structured bug investigation |
-| Any project | `superpowers:verification-before-completion` | Prevents false completion claims |
-| Design/creative project | `photoshop-mcp` | Photoshop integration |
-
-**Present recommendations to the user.** Do not auto-install skills without explicit confirmation.
-
-Output format:
-```
-Recommended skills for this project:
-1. [skill-name] — reason based on observed project characteristic
-2. [skill-name] — reason based on observed project characteristic
-...
+```markdown
+# .claude/skills/fix-issue/SKILL.md
+---
+name: fix-issue
+description: Fix a GitHub issue with test-first approach
+---
+1. `gh issue view $ARGUMENTS` — read the actual issue
+2. Write a failing test that reproduces it
+3. Fix the implementation
+4. Run full test suite
+5. Commit and create PR
 ```
 
-## Step 6: Verify Setup
+### Subagents (.claude/agents/)
 
-Validate all produced artifacts:
+For projects with distinct domains, scaffold specialized subagents:
 
-| Check | How | Pass Condition |
-|-------|-----|----------------|
-| CLAUDE.md exists | Glob/Read | File present at project root |
-| CLAUDE.md has Commands first | Read | Commands section exists and is the first content section |
-| CLAUDE.md has Gotchas | Read | "Things That Will Bite You" section with at least 2 non-obvious items |
-| CLAUDE.md length proportional | `wc -l` | Simple: <60, Medium: <150, Complex: <300 lines |
-| .claude/rules/ created | Glob | At least 1 path-scoped rule file if project has distinct domains |
-| settings.json valid | Read + JSON parse | Valid JSON, no syntax errors |
-| Hooks reference valid commands | Bash: `which <command>` or check in `node_modules/.bin/` | All hook commands exist |
-| No conflicts | Compare new vs existing config | No overwrites of user customizations |
-| Dev commands work | Bash: dry-run build/test commands | Commands execute without errors |
+```markdown
+# .claude/agents/security-reviewer.md
+---
+name: security-reviewer
+tools: Read, Grep, Glob
+---
+Review code for injection vulnerabilities, auth flaws, and secrets in code.
+Provide specific line references and fixes.
+```
 
-Report results as pass/fail per check. If any check fails, report the failure and suggest a fix.
+### Plugin recommendations
+
+Match project needs to available plugins. Present to user, don't auto-install.
+
+## Step 7: Verify Setup
+
+| Check | Pass Condition |
+|-------|----------------|
+| CLAUDE.md exists, Commands first | Commands is the first content section |
+| CLAUDE.md ~100 lines | Under 150 lines |
+| Gotchas section has 2+ items | Non-obvious behaviors documented |
+| .claude/rules/ has path-scoped files | At least 1 rule file per distinct domain |
+| settings.json valid JSON | Parses without errors |
+| Hook commands exist | `which <cmd>` or `node_modules/.bin/` check |
+| No overwrites of user config | Existing customizations preserved |
 
 ---
-
-## Process Flow
-
-```graphviz
-digraph harness_init {
-  rankdir=TB;
-  node [shape=box style=rounded];
-
-  START       [label="Invoke\nharness-init" shape=oval];
-  GATE        [label="HARD-GATE\nAll 6 steps required" shape=diamond];
-  SCAN        [label="1. Scan Project\n(5+ source files\n+ all configs)"];
-  AUDIT       [label="2. Audit Existing\nHarness"];
-  HAS_CONFIG  [label="Existing config?" shape=diamond];
-  MERGE       [label="Plan: merge\n(preserve user config)"];
-  FRESH       [label="Plan: create fresh"];
-  CLAUDEMD    [label="3. Generate CLAUDE.md\n(present for approval)"];
-  APPROVE1    [label="User approves?" shape=diamond];
-  SETTINGS    [label="4. Configure Hooks\n(present for approval)"];
-  APPROVE2    [label="User approves?" shape=diamond];
-  SKILLS      [label="5. Recommend Skills"];
-  VERIFY      [label="6. Verify Setup"];
-  COMPLETE    [label="All checks pass?" shape=diamond];
-  OUTPUT      [label="Present summary"];
-  END         [label="done" shape=oval];
-
-  START       -> GATE;
-  GATE        -> SCAN;
-  SCAN        -> AUDIT;
-  AUDIT       -> HAS_CONFIG;
-  HAS_CONFIG  -> MERGE  [label="yes"];
-  HAS_CONFIG  -> FRESH  [label="no"];
-  MERGE       -> CLAUDEMD;
-  FRESH       -> CLAUDEMD;
-  CLAUDEMD    -> APPROVE1;
-  APPROVE1    -> SETTINGS   [label="yes"];
-  APPROVE1    -> CLAUDEMD   [label="revise" style=dashed];
-  SETTINGS    -> APPROVE2;
-  APPROVE2    -> SKILLS     [label="yes"];
-  APPROVE2    -> SETTINGS   [label="revise" style=dashed];
-  SKILLS      -> VERIFY;
-  VERIFY      -> COMPLETE;
-  COMPLETE    -> OUTPUT     [label="yes"];
-  COMPLETE    -> SCAN       [label="no — fix\nfailing checks" style=dashed];
-  OUTPUT      -> END;
-}
-```
 
 ## Anti-Pattern: "README-as-CLAUDE.md"
 
-The most common failure mode is producing a CLAUDE.md that reads like a README: listing tech stack, describing every file, writing marketing copy. Some project context is needed (see "What This Is" and "How It Works" sections), but it should be **brief and factual**, not exhaustive.
-
-**Test each line:** Does this help Claude **do work**, or does it just describe the project?
-
-| Descriptive (low value) | Actionable (high value) |
-|-------------------------|------------------------|
+| Descriptive (cut it) | Actionable (keep it) |
+|----------------------|---------------------|
 | "This project uses TypeScript and React" | "Runtime is Bun, not Node. Use bun test, not jest." |
-| "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body directly" |
-| "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>` for single tests, never the full suite" |
-| "The database is PostgreSQL" | "Never write raw SQL — use the query builder in src/db/queries.ts" |
-| "Authentication uses JWT tokens" | "Token lifecycle matters: obtained early, revoked in always() step. Don't skip revocation." |
+| "The API is in src/api/" | "API handlers must validate input with zod — never trust req.body" |
+| "We use Jest for testing" | "Run `npm test -- --testPathPattern=<file>`, never the full suite" |
 
-## Anti-Pattern: "This Is Too Simple"
+**A good CLAUDE.md tells Claude HOW to behave, not WHAT the project is.**
 
-Every project — no matter how small or "standard" — goes through the full 6-step checklist. There are no exceptions.
+## Anti-Pattern: "Blindly Copy Generic Rules"
 
-**Why:** Agents skip steps precisely when the project seems familiar. A "standard React app" has hundreds of possible convention combinations. A CLAUDE.md that says "use TypeScript" for a TypeScript project adds zero value — the value comes from discovering the _specific_ behavioral rules this project needs.
-
-## Rationalization Table
-
-| Excuse | Counter |
-|--------|---------|
-| "I can write a good CLAUDE.md from the directory listing alone" | Directory listings reveal file names, not behavioral rules, gotchas, or workflow patterns. A CLAUDE.md without code reading is a generic template with project names swapped in. |
-| "I should document the project's tech stack and architecture in CLAUDE.md" | CLAUDE.md is a behavioral guide, not a README. Claude can read package.json and source code. Document HOW to work in the project (rules, gotchas, workflow), not WHAT the project is. Every line that describes the project instead of guiding behavior wastes context tokens and reduces adherence. |
-| "This is a standard React/Node/Python project, no deep analysis needed" | "Standard" projects have the most variation in conventions. Two React projects can differ entirely in state management, testing, and structure. The word "standard" substitutes a label for actual observation. |
-| "The user just wants a CLAUDE.md, I don't need hooks too" | CLAUDE.md alone is a partial harness. The skill is "harness-init", not "claude-md-init". Partial setup creates a false sense of completeness. |
-| "I already know this codebase from earlier in the conversation" | Conversation memory is not systematic analysis. Prior knowledge may be incomplete or biased toward recently-viewed files. Each invocation must produce evidence from current file reads. |
-| "I'll write a basic CLAUDE.md now and refine it later" | Agents that defer refinement never return. A well-analyzed CLAUDE.md written once outperforms a generic template refined zero times. |
-| "The user explicitly asked me to skip steps / use a template" | The HARD-GATE applies regardless of who requests the skip. If the user wants fewer steps, they can decline at the approval gates (Steps 3 and 4). But the analysis steps (1-2) and verification (6) are non-negotiable — they ensure the output has value. |
-
-## Portability Adapter
-
-When operating outside Claude Code (e.g. Codex CLI, Gemini CLI):
-
-- **Skill tool:** Not available. Follow this checklist manually by reading this file.
-- **Agent tool (parallel exploration):** Not available. Execute file scans sequentially instead of in parallel.
-- **Skill("update-config"):** Not available. Write `.claude/settings.json` manually using shell redirects or document hooks as manual commands in CLAUDE.md.
-- **Hook configuration:** Not available on non-Claude-Code platforms. Embed all rules and workflow instructions directly in CLAUDE.md as prose. The CLAUDE.md becomes the single source of truth.
-- **Task tracking:** Not available. Print `[STEP N/6]` status lines to output instead.
-- **Degraded mode:** When settings.json and hooks are unavailable, produce an enhanced CLAUDE.md that embeds all rules, conventions, and workflow instructions. Quality degrades for automated enforcement but all analysis steps still apply.
+The 3-layer system provides a menu, not a checklist. An agent that dumps all 20 generic rules into every project is defeating the purpose. Pick 5-6 that address real risks for THIS project. If the project has no tests, testing integrity rules are higher priority than code style rules.
