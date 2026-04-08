@@ -54,18 +54,35 @@ Golden Rule: **"Would removing this line cause Claude to make mistakes?"** NO �
 
 Before writing ANY line, ask: **"Can Claude figure this out by reading the code?"**
 
-| Can Claude read it? | Example | Action |
-|---------------------|---------|--------|
-| `package.json` → ESM, `.js` extensions | "ESM only. 모든 import에 .js 필수." | **CUT** — tsconfig + package.json에서 유추 가능 |
-| Source code → function signatures | "`query()` is async iterator" | **CUT** — 타입 시그니처 읽으면 보임 |
-| Schema/migration → DB constraints | "UNIQUE 제약: (channelId, threadTs)" | **CUT** — 스키마 읽으면 보임 |
-| Code patterns → factory, DI | "factory 패턴: `createXxxAgent()`" | **CUT** — 코드 읽으면 보임 |
-| NO way to know from code | ".env는 agent-server/.env에 위치해야 함" | **KEEP** — 위치 convention은 코드에 없음 |
-| Operational experience only | "build 없이 프로덕션 배포하면 깨진다" | **KEEP** — 운영 경험에서만 알 수 있음 |
-| Hidden coupling | "PM2 프로세스 이름은 gamja — ecosystem.config.cjs" | **KEEP** — 찾기 어려운 설정 |
+Apply this filter to EVERY line BEFORE including it. No exceptions.
 
-**CLAUDE.md에 남는 것:** 코드를 아무리 읽어도 절대 알 수 없거나 찾기 어려운 것만.
-**나머지는 전부 .claude/rules/에 넣거나 제거.**
+**CUT if Claude can learn it from:**
+- `package.json`, `tsconfig.json`, linter configs → language/module settings
+- Source code → function signatures, patterns, data types
+- Schema/migration files → DB constraints, indexes
+- Import graph → what depends on what, which models/DBs are used
+- Config files → model names, ports, process names
+
+**KEEP only if it requires:**
+- Operational experience ("build없이 배포하면 깨진다")
+- Hidden conventions not in code (".env must be in agent-server/, not root")
+- Business/cost reasons ("SDK calls cost money — mock in tests")
+- Multi-file coupling that's easy to miss ("routing logic split across 2 files")
+- Intentional workarounds ("don't remove `as never` — it's deliberate")
+
+**Section-specific filters:**
+
+**How It Works:** One data flow sentence ONLY. CUT any line that names specific files, models, databases, or tech choices. Claude reads `package.json` and imports — it knows your stack.
+- BAD: "IntentAgent는 Haiku로 파싱, SessionAgent는 Opus로 코딩, 데이터는 SQLite + Neo4j + sqlite-vec"
+- GOOD: "Slack event → Gateway → Orchestrator → Domain Agent → SDK query()"
+
+**Things That Will Bite You:** ONLY items impossible to discover from code. If Claude can find it by reading a schema, config, or source file — it's NOT a gotcha, it's just code.
+- BAD: "SessionStore has UNIQUE index on (channelId, threadTs)" — schema says this
+- GOOD: "DM 세션 생성 전 기존 default를 닫아야 함 — 안하면 UNIQUE 에러" — the WORKFLOW is the gotcha, not the constraint
+
+**Code Conventions:** ZERO items that linter/formatter configs already enforce. Only human conventions with no tooling enforcement.
+- BAD: "TypeScript strict mode" — tsconfig says this
+- GOOD: "`as never` 캐스트는 의도적 — 제거하지 마라" — no config enforces this
 
 ### Template (Anthropic pattern)
 
@@ -111,12 +128,13 @@ For monorepos, use subdirectory CLAUDE.md files — they load on demand when Cla
 
 ### Validation
 
-- **Code-Readable Filter passed** — go line by line: if Claude can learn it from reading code/config, DELETE it
-- Commands section is first and exists
-- "Things That Will Bite You" has 2+ items that are IMPOSSIBLE to know from code alone
-- "How It Works" is 3-5 lines max — data flow sentence, not directory tree
-- "Code Conventions" contains ZERO items Claude can infer from linter configs or code patterns
-- Total under 100 lines (150 max for complex projects)
+Go line by line and apply the Code-Readable Filter. If ANY check fails, revise before presenting.
+
+- **"How It Works"**: Is it ONE data flow sentence? Does it name specific files, models, or databases? If yes → rewrite.
+- **"Things That Will Bite You"**: For each item, can Claude find this by reading ONE file? If yes → CUT or rewrite as workflow gotcha.
+- **"Code Conventions"**: Does a linter/config already enforce this? If yes → CUT.
+- **Total under 100 lines** (150 max for complex projects)
+- Commands section is first
 - Imperative factual tone
 
 **Pause for user approval.**
