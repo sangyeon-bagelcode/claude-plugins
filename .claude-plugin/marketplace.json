@@ -109,6 +109,14 @@
       "version": "1.0.0",
       "category": "art",
       "keywords": ["slot", "unity", "mcp", "jackpot", "prefab", "animation", "animator", "lock"]
+    },
+    {
+      "name": "harness-init",
+      "description": "프로젝트 분석 후 Claude Code 하네스 자동 세팅. CLAUDE.md, settings/hooks, skill 추천을 실제 코드 분석 기반으로 생성.",
+      "source": "./plugins/harness-init",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": ["harness", "claude-md", "setup", "onboarding", "hooks", "settings", "project-init"]
     }
   ]
 }
