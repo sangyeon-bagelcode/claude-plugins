@@ -30,17 +30,21 @@ Complete every step in order. Do not skip, reorder, or abbreviate.
 
 Analyze these dimensions by reading actual files — not guessing from file names:
 
-| Dimension | What to look for | Key files to read |
-|-----------|-----------------|-------------------|
-| **Structure** | Directory layout, monorepo detection, key directories | Top-level `ls`, nested `src/`, `packages/` |
-| **Tech stack** | Languages, frameworks, runtime versions | `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile` |
-| **Architecture** | Layering, module boundaries, patterns | Entry points (`index.*`, `main.*`, `app.*`), key source files |
-| **Conventions** | Naming, file organization, code style | `.eslintrc*`, `.prettierrc*`, `tsconfig.json`, `rustfmt.toml`, `.editorconfig` |
-| **Testing** | Framework, file patterns, coverage config | Test directories, `jest.config.*`, `vitest.config.*`, `pytest.ini` |
-| **Build/Deploy** | Build tools, CI/CD, containers | `Makefile`, `Dockerfile`, `.github/workflows/`, `Jenkinsfile` |
-| **Dev commands** | Build, test, lint, run commands | `package.json` scripts, `Makefile` targets, documented commands |
+| Dimension | What to look for | Key files to read | Feeds into (Step 3) |
+|-----------|-----------------|-------------------|---------------------|
+| **Config non-defaults** | Linter/formatter/compiler settings that differ from tool defaults | `.eslintrc*`, `.prettierrc*`, `tsconfig.json`, `biome.json`, `.editorconfig` | Code Style rules |
+| **Code patterns** | Repeated import styles, error handling, naming across modules | 5+ source files from different directories | Code Style / Architecture rules |
+| **Module boundaries** | Which modules import from which, layering, forbidden cross-imports | Entry points + key source files in each `src/` subdirectory | Architecture Decisions |
+| **Package scripts** | Exact build/test/lint/run commands with flags and env vars | `package.json` scripts, `Makefile` targets | Commands section |
+| **CI pipeline** | Required checks, step order, branch rules | `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` | Workflow rules |
+| **Environment deps** | Required env vars, local services, setup prerequisites | `.env.example`, `docker-compose.yml`, README setup section | Commands / Gotchas |
+| **Test conventions** | Mock vs fixture, test file patterns, framework-specific idioms | Test files, `jest.config.*`, `vitest.config.*`, `pytest.ini`, fixtures dir | .claude/rules/testing.md |
+| **Error handling** | Custom error classes, catch patterns, error middleware | Error files, middleware, catch blocks across codebase | Code Style / rules/ |
+| **Non-obvious behaviors** | Comments with NOTE/HACK/WORKAROUND/TODO, known gotchas | README troubleshooting, inline comments, git blame for reverts | Gotchas section |
 
 **Minimum reads:** At least 5 actual source files + all detected config files. Directory listings alone are insufficient.
+
+**Goal of scanning:** Every observation here must feed into a concrete behavioral rule in Step 3. If an observation doesn't produce a rule, it was unnecessary.
 
 Tools: Glob, Grep, Read, Bash
 
@@ -78,6 +82,24 @@ CLAUDE.md is a **behavioral guide**, NOT a README. It tells Claude HOW to work i
 For every line, ask: **"Would removing this cause Claude to make mistakes?"**
 - YES → keep it
 - NO → cut it. Claude can figure it out by reading code.
+
+### Pattern → Rule Derivation Framework
+
+Behavioral rules are not invented — they are **derived from observed patterns**. For each source below, apply the conversion method to produce actionable rules.
+
+| # | Observation Source | What to Read | Conversion Method | Output Section |
+|---|-------------------|-------------|-------------------|----------------|
+| 1 | **Config non-defaults** | `.eslintrc`, `.prettierrc`, `tsconfig.json`, `biome.json`, `rustfmt.toml` | Extract every setting that **differs from tool defaults** → convert to imperative instruction | Code Style |
+| 2 | **Repeated code patterns** | 5+ source files across different modules | Identify patterns present in **all or most** files (import style, error handling, naming) → "Always do X" | Code Style |
+| 3 | **Module boundaries** | Import graph across `src/` directories | Identify which modules import from which → "Never import X from Y directly" | Architecture Decisions |
+| 4 | **Package scripts & Makefile** | `package.json` scripts, `Makefile` targets | Extract exact commands with flags → include env vars and gotchas | Commands |
+| 5 | **CI pipeline** | `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml` | Extract step order and required checks → "Always X before Y" | Workflow |
+| 6 | **Environment dependencies** | `.env.example`, `docker-compose.yml`, README setup section | Identify required services and env vars → "IMPORTANT: must set X" | Commands / Gotchas |
+| 7 | **Test conventions** | Test files, test config, fixtures directory | Identify test style (mock vs fixture, describe/it vs test) → "Use X, never Y" | .claude/rules/testing.md |
+| 8 | **Error handling patterns** | `catch` blocks, custom error classes, error middleware | Identify consistent patterns → "Throw X, handle with Y" | .claude/rules/ or Code Style |
+| 9 | **Non-obvious behaviors** | README troubleshooting, comments with "NOTE"/"HACK"/"WORKAROUND" | Identify gotchas that would trip up a newcomer | Gotchas |
+
+**Derivation rule:** If you cannot point to the specific file + line where you observed the pattern, do not write the rule. No rules from assumption.
 
 ### What to INCLUDE vs EXCLUDE
 
