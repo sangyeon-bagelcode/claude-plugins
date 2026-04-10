@@ -3,189 +3,194 @@ name: gs-connect
 description: Use when a user wants to connect to the gs-os-ontology MCP server — guides through VPN/network prerequisites, build verification, transport selection (stdio/SSE), client-specific configuration, and connection verification
 ---
 
-# GS Connect
+# GS Connect — 온톨로지 CLI 설치 가이드
+
+> **아키텍처 전환 완료 (2026-04-10):** MCP 서버 → REST API + CLI thin client.
+> 온톨로지 데이터는 Deploy OS 서버(wiki)가 제공하고, CLI는 서버 API를 호출하는 thin client.
 
 <HARD-GATE>
-Do NOT generate connection configuration until ALL of the following are confirmed:
-1. Network access verified (VPN active, server internal IP detected)
-2. Server build status verified (mcp-server/dist/index.js exists)
-3. User's MCP client identified
-4. Transport method selected (stdio or SSE)
-Producing a config snippet before completing steps 1-4 violates this gate.
+MCP 서버 설정을 안내하지 마라. MCP는 폐기되었다.
+온톨로지 접근은 반드시 gs-os CLI 또는 직접 REST API 호출을 통해서만 안내한다.
 </HARD-GATE>
 
-## Checklist
+## 체크리스트
 
-Complete every step in order. Do not skip, reorder, or abbreviate.
+완료 순서대로 진행. 건너뛰거나 순서를 바꾸지 않는다.
 
-1. **Determine connection type** — Is the user connecting locally (on this machine) or remotely (from another machine)?
-   - **Local** → skip to step 3 (no VPN needed)
-   - **Remote** → continue to step 2
+1. **기존 MCP 설정 제거** — 사용자에게 MCP 설정이 있는지 확인하고 제거를 안내한다.
+2. **CLI 설치 여부 확인** — `gs-os --version`을 실행하여 이미 설치되어 있는지 확인한다.
+3. **CLI 설치** — 미설치 시 설치를 진행한다.
+4. **환경변수 확인** — `GS_OS_SERVER_URL`이 설정되어 있는지 확인한다.
+5. **연결 검증** — `gs-os stats`를 실행하여 서버 응답을 확인한다.
 
-2. **Verify network access** — Remote users must be on the internal network via CloudFlare VPN.
-   - Instruct user: "CloudFlare VPN을 켜세요."
-   - Instruct user: "1Password에서 **Yongyong Machine**을 검색하세요. **웹사이트** 필드의 IP 주소(172.x.x.x 부분)가 MCP 서버 주소입니다."
-   - User가 IP를 알려주면 그 값을 SSE config의 host로 사용한다.
+## Step 1: 기존 MCP 설정 제거
 
-3. **Verify build** — Check that `mcp-server/dist/index.js` exists. If missing, run `cd mcp-server && npm run build`. Do not proceed until the build artifact exists.
+사용자에게 다음 파일들에서 `gs-os-ontology` 항목이 있는지 확인하도록 안내:
 
-4. **Identify MCP client** — Ask the user which client they use:
-   - Claude Desktop
-   - Claude Code (CLI / VS Code / JetBrains)
-   - Cursor
-   - Windsurf
-   - Other (SSE-compatible)
+| 클라이언트 | 설정 파일 |
+|-----------|----------|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| Claude Code | `.claude/settings.json` 또는 `~/.claude/settings.json` |
+| Cursor | `.cursor/mcp.json` |
 
-5. **Select transport** — Determine the appropriate transport:
-   - **stdio** — Local connections only (Claude Desktop, Claude Code, Cursor on this machine)
-   - **SSE/HTTP** — Remote connections (always), multi-session, web clients, PM2-managed server
-
-6. **Resolve host and paths** —
-   - **Local (stdio):** Compute absolute path to workspace root (`GS_OS_BASE_PATH`). This is the directory containing `mcp-server/`, `output/`, `games/`, `client/`.
-   - **Remote (SSE):** Use the IP the user provided from 1Password (step 2) as the host.
-
-7. **Generate config** — Produce the client-specific configuration using the templates below. Replace all placeholders with actual values from steps 2 and 6.
-
-8. **Apply config** — Guide the user to place the configuration in the correct location for their client.
-
-9. **Verify connection** —
-   - stdio: restart the client and check that gs-os-ontology tools appear (16 tools expected)
-   - SSE: `curl http://<INTERNAL_IP>:3100/health` should return `{"status":"ok",...}`
-
-## Server Reference
-
-| Property | Value |
-|----------|-------|
-| Server name | `gs-os-ontology` |
-| Entry point | `mcp-server/dist/index.js` |
-| Build command | `cd mcp-server && npm run build` |
-| PM2 config | `ecosystem.config.js` (runs `npm start` in mcp-server/) |
-| Default port | 3100 |
-
-### Network
-
-| Item | Detail |
-|------|--------|
-| VPN | CloudFlare (required for remote access) |
-| Server IP | 1Password → **Yongyong Machine** 검색 → **웹사이트** 필드의 IP (172.x.x.x) |
-| Firewall | Port 3100 open (no additional config needed) |
-
-### Transports
-
-| Transport | Flag | Port | Endpoints |
-|-----------|------|------|-----------|
-| stdio | (none) | N/A | stdin/stdout |
-| SSE/HTTP | `--http` | 3100 (`MCP_PORT`) | GET `/sse`, POST `/messages`, GET `/health` |
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GS_OS_BASE_PATH` | No | `cwd/..` | Workspace root (parent of mcp-server/) |
-| `GWS_ENABLED` | No | `true` | Enable GWS Drive tools |
-| `GWS_BIN_PATH` | No | system PATH | Path to gws CLI binary |
-| `MCP_PORT` | No | `3100` | SSE mode listening port |
-
-### Tools (16)
-
-**Ontology (8):** resolve_query, search_games, get_game, similar_games, get_dictionary, portfolio_stats, edit_game_tags, edit_dictionary
-**Simulation (4):** run_simulation, get_simulation_status, cancel_simulation, list_simulations
-**GWS Drive (4, optional):** drive_search, drive_read_doc, drive_read_sheet, drive_read_slides
-
-## Configuration Templates
-
-### Local — Claude Desktop (stdio)
-
-Config file: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+해당 항목이 있으면 `mcpServers` 에서 `gs-os-ontology` 키를 삭제한다.
 
 ```json
+// 이 블록을 삭제:
+"gs-os-ontology": {
+  "command": "node",
+  "args": ["..."],
+  "env": { ... }
+}
+```
+
+SSE 방식도 동일하게 삭제:
+```json
+// 이 블록도 삭제:
+"gs-os-ontology": {
+  "url": "http://172.x.x.x:3100/sse"
+}
+```
+
+## Step 2: CLI 설치 여부 확인
+
+```bash
+gs-os --version
+```
+
+- `2.0.0` 이상 → Step 4로 건너뛴다.
+- command not found → Step 3으로 진행한다.
+- `1.x.x` → 구버전. Step 3에서 업데이트한다.
+
+## Step 3: CLI 설치
+
+### 방법 A: 설치 스크립트 (권장)
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/bagelcode-gamestudio/os/main/gs-os/install.sh)
+```
+
+이 스크립트가 자동으로:
+- gs-os 코드만 sparse checkout (서브모듈/데이터 불필요)
+- npm install && build
+- npm link (글로벌 등록)
+- 환경변수 설정
+
+### 방법 B: 수동 설치
+
+```bash
+# 1. gs-os 폴더만 sparse checkout
+git clone --no-checkout --filter=blob:none git@github.com:bagelcode-gamestudio/os.git gs-os-cli
+cd gs-os-cli
+git sparse-checkout set gs-os
+git checkout main
+
+# 2. 빌드 + 글로벌 등록
+cd gs-os
+npm install && npm run build
+npm link
+```
+
+### 기존 설치 업데이트 (1.x → 2.x)
+
+기존 gs-os가 로컬 데이터 로딩 방식(v1)인 경우:
+
+```bash
+cd <gs-os-cli 설치 경로>
+git pull
+cd gs-os
+npm install && npm run build
+```
+
+## Step 4: 환경변수 확인
+
+```bash
+echo $GS_OS_SERVER_URL
+```
+
+- 값이 출력되면 → Step 5로 진행.
+- 비어 있으면 → 설정:
+
+```bash
+echo 'export GS_OS_SERVER_URL=https://gs-os-dev.backoffice.bagelgames.com' >> ~/.zshrc
+source ~/.zshrc
+```
+
+bash 사용자는 `~/.bashrc`에 추가.
+
+## Step 5: 연결 검증
+
+```bash
+gs-os stats
+```
+
+정상 응답 예시:
+```json
 {
-  "mcpServers": {
-    "gs-os-ontology": {
-      "command": "node",
-      "args": ["<WORKSPACE>/mcp-server/dist/index.js"],
-      "env": {
-        "GS_OS_BASE_PATH": "<WORKSPACE>"
-      }
-    }
+  "data": {
+    "total_games": 364,
+    "total_tags": 85,
+    "by_type": { "SLOT_MACHINE": 356, ... }
   }
 }
 ```
 
-### Local — Claude Code (stdio)
+에러 시 확인사항:
+- `NETWORK_ERROR` → 서버 접근 불가. VPN 확인 또는 URL 확인.
+- `command not found` → Step 3 재진행.
 
-Config file: `<project>/.claude/settings.json` or `~/.claude/settings.json`
+## CLI 사용법
 
-```json
-{
-  "mcpServers": {
-    "gs-os-ontology": {
-      "command": "node",
-      "args": ["<WORKSPACE>/mcp-server/dist/index.js"],
-      "env": {
-        "GS_OS_BASE_PATH": "<WORKSPACE>"
-      }
-    }
-  }
-}
+```bash
+gs-os search "와일드가 확장되는 프리스핀"   # 자연어 검색
+gs-os get 272                              # 게임 상세
+gs-os similar 272 --limit 5               # 유사 게임
+gs-os list --tags free_spin --type SLOT_MACHINE  # 필터 목록
+gs-os diff 272 243                         # 두 게임 비교
+gs-os dict free_spin                       # 태그 사전
+gs-os dict --stats                         # 태그 사용 빈도
+gs-os stats                                # 포트폴리오 통계
+gs-os stats --group-by game_type           # 그룹별 통계
 ```
 
-### Local — Cursor (stdio)
+모든 출력은 JSON. AI 에이전트가 `| jq` 파이프로 파싱하기에 최적화.
 
-Config file: `<project>/.cursor/mcp.json`
+## REST API 직접 호출 (CLI 없이)
 
-```json
-{
-  "mcpServers": {
-    "gs-os-ontology": {
-      "command": "node",
-      "args": ["<WORKSPACE>/mcp-server/dist/index.js"],
-      "env": {
-        "GS_OS_BASE_PATH": "<WORKSPACE>"
-      }
-    }
-  }
-}
+CLI 설치 없이 curl로도 동일한 데이터에 접근 가능:
+
+```bash
+curl -s 'https://gs-os-dev.backoffice.bagelgames.com/api/ontology/stats' | jq
+curl -s 'https://gs-os-dev.backoffice.bagelgames.com/api/ontology/search?q=프리스핀&limit=5' | jq
+curl -s 'https://gs-os-dev.backoffice.bagelgames.com/api/ontology/get/272' | jq
 ```
 
-### Remote — SSE mode (all clients)
+## 아키텍처 참조
 
-Prerequisite: CloudFlare VPN active, server running via PM2 or `node dist/index.js --http`
-
-**Claude Desktop:**
-```json
-{
-  "mcpServers": {
-    "gs-os-ontology": {
-      "url": "http://<INTERNAL_IP>:3100/sse"
-    }
-  }
-}
+```
+gs-os CLI (thin client)
+  └─ HTTP fetch ──→ Wiki 서버 (Deploy OS)
+                       └─ /api/ontology/* (7개 엔드포인트)
+                            └─ JaccardEngine, SynonymMatcher
+                                 └─ output/phase2/*.json (메모리 캐시)
 ```
 
-**Claude Code:**
-```json
-{
-  "mcpServers": {
-    "gs-os-ontology": {
-      "url": "http://<INTERNAL_IP>:3100/sse"
-    }
-  }
-}
-```
+| 항목 | 값 |
+|------|---|
+| 서버 URL | `https://gs-os-dev.backoffice.bagelgames.com` |
+| API 베이스 | `/api/ontology/` |
+| 인증 | 없음 (내부망) |
+| CLI 버전 | 2.0.0 |
+| 의존성 | commander.js + Node 18+ built-in fetch |
 
-**Cursor:**
-```json
-{
-  "mcpServers": {
-    "gs-os-ontology": {
-      "url": "http://<INTERNAL_IP>:3100/sse"
-    }
-  }
-}
-```
+## Anti-Pattern: "MCP로 하면 안 되나요?"
 
-**Health check:** `curl http://<INTERNAL_IP>:3100/health`
+MCP 서버는 **폐기**되었다. 이유:
+- CLI가 MCP 대비 10-32x 토큰 효율적
+- 100% 신뢰성 (MCP는 72%)
+- 서버 API 기반으로 어디서든 접근 가능 (로컬 데이터 파일 불필요)
+
+MCP 설정을 요청하는 사용자에게는 이 스킬의 Step 1부터 안내한다.
 
 ## Process Flow
 
@@ -194,64 +199,35 @@ digraph gs_connect {
   rankdir=TB;
   node [shape=box style=rounded];
 
-  START       [label="Invoke\ngs-connect" shape=oval];
-  CONN_TYPE   [label="1. Local or\nRemote?" shape=diamond];
-  VPN         [label="2. Verify VPN\nDetect 172.x.x.x IP"];
-  NO_IP       [label="No 172 IP?\nAlert user" shape=diamond];
-  CHECK_BUILD [label="3. Verify Build\ndist/index.js"];
-  NEED_BUILD  [label="Exists?" shape=diamond];
-  DO_BUILD    [label="npm run build"];
-  ASK_CLIENT  [label="4. Identify\nMCP Client"];
-  TRANSPORT   [label="5. Select Transport" shape=diamond];
-  RESOLVE     [label="6. Resolve\nhost & paths"];
-  GEN_STDIO   [label="7a. Generate\nstdio config"];
-  GEN_SSE     [label="7b. Generate\nSSE config\n(with 172 IP)"];
-  APPLY       [label="8. Apply config"];
-  VERIFY      [label="9. Verify\nconnection"];
-  DONE        [label="Connected" shape=oval];
+  START        [label="Invoke\ngs-connect" shape=oval];
+  CHECK_MCP    [label="1. MCP 설정\n있는가?" shape=diamond];
+  REMOVE_MCP   [label="MCP 설정 제거"];
+  CHECK_CLI    [label="2. gs-os\n--version" shape=diamond];
+  INSTALL_CLI  [label="3. CLI 설치\n(sparse checkout)"];
+  CHECK_ENV    [label="4. GS_OS_SERVER_URL\n설정됨?" shape=diamond];
+  SET_ENV      [label="환경변수 설정"];
+  VERIFY       [label="5. gs-os stats\n실행"];
+  DONE         [label="완료" shape=oval];
 
-  START       -> CONN_TYPE;
-  CONN_TYPE   -> VPN         [label="remote"];
-  CONN_TYPE   -> CHECK_BUILD [label="local"];
-  VPN         -> NO_IP;
-  NO_IP       -> CHECK_BUILD [label="IP found"];
-  NO_IP       -> DONE        [label="not found\n(alert & stop)" style=dashed];
-  CHECK_BUILD -> NEED_BUILD;
-  NEED_BUILD  -> DO_BUILD    [label="missing"];
-  NEED_BUILD  -> ASK_CLIENT  [label="exists"];
-  DO_BUILD    -> ASK_CLIENT;
-  ASK_CLIENT  -> TRANSPORT;
-  TRANSPORT   -> RESOLVE;
-  RESOLVE     -> GEN_STDIO   [label="stdio (local)"];
-  RESOLVE     -> GEN_SSE     [label="SSE (remote)"];
-  GEN_STDIO   -> APPLY;
-  GEN_SSE     -> APPLY;
-  APPLY       -> VERIFY;
+  START       -> CHECK_MCP;
+  CHECK_MCP   -> REMOVE_MCP   [label="있음"];
+  CHECK_MCP   -> CHECK_CLI    [label="없음"];
+  REMOVE_MCP  -> CHECK_CLI;
+  CHECK_CLI   -> INSTALL_CLI  [label="미설치/구버전"];
+  CHECK_CLI   -> CHECK_ENV    [label="2.0.0+"];
+  INSTALL_CLI -> CHECK_ENV;
+  CHECK_ENV   -> SET_ENV      [label="미설정"];
+  CHECK_ENV   -> VERIFY       [label="설정됨"];
+  SET_ENV     -> VERIFY;
   VERIFY      -> DONE;
 }
 ```
 
-## Anti-Pattern: "This Is Too Simple"
-
-Every invocation — no matter how straightforward — goes through this full checklist. There are no exceptions.
-
-**Why:** MCP 연결 실패의 주요 원인: (1) VPN 미접속, (2) 미빌드, (3) 잘못된 IP/경로. 이 세 가지는 config를 먼저 던지면 디버깅하기 훨씬 어렵다.
-
-## Rationalization Table
-
-| Excuse | Counter |
-|--------|---------|
-| "설정 JSON만 빨리 주면 된다" | 이 서버는 내부망 VPN 접속이 전제. IP 감지 없이 설정을 주면 연결이 안 된다. |
-| "빌드 확인은 사용자가 알아서 한다" | 미빌드가 MCP 연결 실패의 #1 원인. dist/index.js 확인은 1초면 된다. |
-| "경로/IP는 대충 맞으면 된다" | 내부 IP는 유동적(172.x.x.x). 매번 감지해서 정확한 값을 제공해야 한다. |
-| "로컬이니까 VPN 확인은 필요 없다" | Step 1에서 local/remote를 먼저 판별한다. 로컬이면 VPN 단계를 건너뛴다. |
-
 ## Portability Adapter
 
-When operating outside Claude Code (e.g. Codex CLI, Gemini CLI):
+Claude Code 외 환경에서:
 
-- **Skill tool:** Not available. Follow the checklist steps manually by reading this file.
-- **Read tool (build check):** Use `ls mcp-server/dist/index.js` to verify build exists.
-- **Bash tool (build):** Use `cd mcp-server && npm run build` directly in shell.
-- **Write tool (config):** Use shell redirect (`cat > path << 'EOF'`) to write config files.
-- **Glob tool (find config):** Use `ls` or `find` to locate client config directories.
+- **Codex CLI / Gemini CLI:** 이 파일을 직접 읽고 체크리스트를 수동으로 따른다.
+- **설치 확인:** `gs-os --version`으로 설치 여부 확인.
+- **설정 파일 찾기:** `ls`나 `find`로 MCP 설정 파일 위치를 탐색.
+- **설정 편집:** 셸 에디터나 리다이렉트로 MCP 설정 제거.

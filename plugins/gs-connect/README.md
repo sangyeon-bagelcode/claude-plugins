@@ -1,6 +1,6 @@
 # gs-connect
 
-GS-OS Ontology MCP 서버 연결 설정을 도와주는 스킬입니다.
+GS-OS 온톨로지 CLI 설치 및 MCP → CLI 전환을 안내하는 스킬입니다.
 
 ## 설치
 
@@ -16,12 +16,12 @@ claude plugin add bagelcode-gamestudio/claude-plugins --plugin gs-connect
 
 ## 기능
 
-- CloudFlare VPN 접속 안내
-- 1Password에서 서버 IP 확인 안내
-- MCP 클라이언트별 설정 자동 생성 (Claude Desktop, Claude Code, Cursor, Windsurf)
-- stdio / SSE 트랜스포트 지원
-- 연결 검증 (health check)
+- 기존 MCP 서버 설정 제거 안내
+- gs-os CLI thin client 설치 (sparse checkout)
+- 환경변수 설정 (`GS_OS_SERVER_URL`)
+- 연결 검증 (`gs-os stats`)
+- REST API 직접 호출 안내
 
 ## 트리거
 
-MCP 서버 연결, GS-OS 온톨로지 서버 접속, MCP 설정 등을 요청할 때 자동으로 트리거됩니다.
+온톨로지 서버 연결, gs-os CLI 설치, MCP 설정 전환 등을 요청할 때 자동으로 트리거됩니다.
