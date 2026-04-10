@@ -10,34 +10,10 @@ description: "슬롯 게임, 온톨로지, 태그, 게임 검색, 게임 비교,
 로컬 JSON 파일 직접 읽기 금지. MCP 서버(gs-os-ontology) 폐기됨.
 </HARD-GATE>
 
+## 사용
+
+1. `gs-os --help`로 사용 가능한 커맨드를 확인한다.
+2. 각 커맨드의 옵션은 `gs-os <command> --help`로 확인한다.
+3. 출력은 JSON. `jq`로 파싱한다.
+
 미설치 시 `/gs-connect` 스킬로 설치.
-
-## 커맨드
-
-```bash
-gs-os search "<자연어>"           # 자연어 → 태그 매칭 검색
-gs-os get <game_id>              # 게임 상세 (태그, 소스, evidence)
-gs-os similar <game_id>          # 유사 게임 (Jaccard)
-gs-os list                       # 게임 목록 + 필터
-gs-os diff <id1> <id2>           # 두 게임 태그 비교
-gs-os dict [tag_name]            # 태그 사전
-gs-os stats                      # 포트폴리오 통계
-```
-
-## 주요 옵션
-
-- `--limit <N>` — 결과 수 제한
-- `--type <SLOT_MACHINE|VIDEO_POKER|KENO|BLACKJACK>` — 게임 타입 필터
-- `--tags <t1,t2>` — 태그 필터 (list)
-- `--layer <1-4>` — 태그 레이어 필터
-- `--stats` — 사용 빈도 (dict)
-- `--group-by <tag|layer|game_type|generation|jackpot_type>` — 그룹 집계 (stats)
-
-## 출력
-
-JSON. `jq`로 파싱.
-
-```bash
-gs-os get 272 | jq '.data.tags'
-gs-os search "프리스핀" | jq '.data[].game_name'
-```
