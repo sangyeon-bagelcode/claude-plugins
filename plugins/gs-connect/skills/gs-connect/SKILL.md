@@ -17,26 +17,46 @@ MCP 서버 설정을 안내하지 마라. MCP는 폐기되었다.
 
 완료 순서대로 진행. 건너뛰거나 순서를 바꾸지 않는다.
 
-1. **기존 MCP 설정 제거** — 사용자에게 MCP 설정이 있는지 확인하고 제거를 안내한다.
+0. **gh CLI 확인** — `gh --version`으로 설치 여부 확인. 없으면 설치 + 인증.
+1. **기존 MCP 설정 제거** — 모든 설정 파일에서 `gs-os-ontology` 관련 항목 제거.
 2. **CLI 설치 여부 확인** — `gs-os --version`을 실행하여 이미 설치되어 있는지 확인한다.
 3. **CLI 설치** — 미설치 시 설치를 진행한다.
-4. **환경변수 확인** — `GS_OS_SERVER_URL`이 설정되어 있는지 확인한다.
+4. **환경변수 확인** — PATH + `GS_OS_SERVER_URL` 설정 확인.
 5. **연결 검증** — `gs-os stats`를 실행하여 서버 응답을 확인한다.
+
+## Step 0: gh CLI 확인
+
+```bash
+gh --version
+```
+
+- 설치되어 있으면 → Step 1로 진행.
+- 없으면 먼저 설치:
+  - macOS: `brew install gh`
+  - Linux: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+  - Windows: `winget install --id GitHub.cli`
+
+설치 후 인증:
+```bash
+gh auth login
+```
+
+> ⚠️ 이 레포는 private이라 `gh`가 필수. curl raw URL은 404가 난다.
 
 ## Step 1: 기존 MCP 설정 제거
 
-사용자에게 다음 파일들에서 `gs-os-ontology` 항목이 있는지 확인하도록 안내:
+다음 파일들에서 `gs-os-ontology` 관련 항목이 있으면 **모두** 삭제한다:
 
-| 클라이언트 | 설정 파일 |
-|-----------|----------|
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Claude Code | `.claude/settings.json` 또는 `~/.claude/settings.json` |
-| Cursor | `.cursor/mcp.json` |
+| 파일 | 삭제 대상 |
+|------|----------|
+| `~/.claude.json` | `mcpServers` 객체 안의 `"gs-os-ontology"` 항목 + `disabledMcpServers` 배열 안의 `"gs-os-ontology"` 문자열 |
+| `~/.claude/settings.json` | `mcpServers` 안의 `"gs-os-ontology"` 항목 |
+| `.claude/settings.json` (프로젝트) | `mcpServers` 안의 `"gs-os-ontology"` 항목 + `enabledMcpjsonServers` 배열 안의 `"gs-os-ontology"` 문자열 |
+| `~/Library/Application Support/Claude/claude_desktop_config.json` | `mcpServers` 안의 `"gs-os-ontology"` 항목 |
+| `.cursor/mcp.json` | `mcpServers` 안의 `"gs-os-ontology"` 항목 |
 
-해당 항목이 있으면 `mcpServers` 에서 `gs-os-ontology` 키를 삭제한다.
-
+삭제 대상 예시 (stdio):
 ```json
-// 이 블록을 삭제:
 "gs-os-ontology": {
   "command": "node",
   "args": ["..."],
@@ -44,13 +64,14 @@ MCP 서버 설정을 안내하지 마라. MCP는 폐기되었다.
 }
 ```
 
-SSE 방식도 동일하게 삭제:
+삭제 대상 예시 (SSE):
 ```json
-// 이 블록도 삭제:
 "gs-os-ontology": {
   "url": "http://172.x.x.x:3100/sse"
 }
 ```
+
+> **중요:** JSON 구문이 깨지지 않도록 trailing comma를 반드시 확인.
 
 ## Step 2: CLI 설치 여부 확인
 
@@ -59,15 +80,14 @@ gs-os --version
 ```
 
 - `2.0.0` 이상 → Step 4로 건너뛴다.
-- command not found → Step 3으로 진행한다.
-- `1.x.x` → 구버전. Step 3에서 업데이트한다.
+- command not found 또는 `1.x.x` → Step 3으로 진행한다.
 
 ## Step 3: CLI 설치
 
 ### 방법 A: 설치 스크립트 (권장)
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/bagelcode-gamestudio/os/main/gs-os/install.sh)
+gh api repos/bagelcode-gamestudio/os/contents/gs-os/install.sh --jq '.content' | base64 -d | bash
 ```
 
 이 스크립트가 자동으로:
@@ -80,8 +100,8 @@ bash <(curl -sL https://raw.githubusercontent.com/bagelcode-gamestudio/os/main/g
 
 ```bash
 # 1. gs-os 폴더만 sparse checkout
-git clone --no-checkout --filter=blob:none git@github.com:bagelcode-gamestudio/os.git gs-os-cli
-cd gs-os-cli
+git clone --no-checkout --filter=blob:none git@github.com:bagelcode-gamestudio/os.git ~/gs-os-cli
+cd ~/gs-os-cli
 git sparse-checkout set gs-os
 git checkout main
 
@@ -93,35 +113,32 @@ npm link
 
 ### 기존 설치 업데이트 (1.x → 2.x)
 
-기존 gs-os가 로컬 데이터 로딩 방식(v1)인 경우:
-
 ```bash
-cd <gs-os-cli 설치 경로>
-git pull
-cd gs-os
-npm install && npm run build
+cd ~/gs-os-cli && git pull && cd gs-os && npm install && npm run build
 ```
 
-## Step 4: 환경변수 확인
+## Step 4: 환경변수 확인 (PATH + SERVER_URL)
+
+설치 스크립트가 `.bashrc`에만 PATH를 추가할 수 있으므로, 현재 쉘 RC 파일에 아래 두 항목이 있는지 확인하고 없으면 추가한다.
 
 ```bash
-echo $GS_OS_SERVER_URL
+# ~/.zshrc (또는 ~/.bashrc)에 아래가 있는지 확인:
+export PATH="$HOME/gs-os-cli/bin:$PATH"
+export GS_OS_SERVER_URL=https://gs-os-dev.backoffice.bagelgames.com
 ```
 
-- 값이 출력되면 → Step 5로 진행.
-- 비어 있으면 → 설정:
-
+추가 후:
 ```bash
-echo 'export GS_OS_SERVER_URL=https://gs-os-dev.backoffice.bagelgames.com' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-bash 사용자는 `~/.bashrc`에 추가.
-
 ## Step 5: 연결 검증
 
+현재 세션에서 PATH와 GS_OS_SERVER_URL을 export한 뒤:
+
 ```bash
-gs-os stats
+gs-os --version  # 2.0.0 이상
+gs-os stats      # total_games 숫자가 나오면 성공
 ```
 
 정상 응답 예시:
@@ -136,8 +153,8 @@ gs-os stats
 ```
 
 에러 시 확인사항:
-- `NETWORK_ERROR` → 서버 접근 불가. VPN 확인 또는 URL 확인.
-- `command not found` → Step 3 재진행.
+- `NETWORK_ERROR` → 서버 접근 불가. URL 확인.
+- `command not found` → PATH 확인 또는 Step 3 재진행.
 
 ## CLI 사용법
 
@@ -200,16 +217,21 @@ digraph gs_connect {
   node [shape=box style=rounded];
 
   START        [label="Invoke\ngs-connect" shape=oval];
+  CHECK_GH     [label="0. gh\n--version" shape=diamond];
+  INSTALL_GH   [label="gh 설치 + 인증"];
   CHECK_MCP    [label="1. MCP 설정\n있는가?" shape=diamond];
-  REMOVE_MCP   [label="MCP 설정 제거"];
+  REMOVE_MCP   [label="MCP 설정 제거\n(5개 파일)"];
   CHECK_CLI    [label="2. gs-os\n--version" shape=diamond];
-  INSTALL_CLI  [label="3. CLI 설치\n(sparse checkout)"];
-  CHECK_ENV    [label="4. GS_OS_SERVER_URL\n설정됨?" shape=diamond];
+  INSTALL_CLI  [label="3. CLI 설치\n(gh api + sparse checkout)"];
+  CHECK_ENV    [label="4. PATH +\nSERVER_URL?" shape=diamond];
   SET_ENV      [label="환경변수 설정"];
   VERIFY       [label="5. gs-os stats\n실행"];
   DONE         [label="완료" shape=oval];
 
-  START       -> CHECK_MCP;
+  START       -> CHECK_GH;
+  CHECK_GH    -> INSTALL_GH   [label="미설치"];
+  CHECK_GH    -> CHECK_MCP    [label="설치됨"];
+  INSTALL_GH  -> CHECK_MCP;
   CHECK_MCP   -> REMOVE_MCP   [label="있음"];
   CHECK_MCP   -> CHECK_CLI    [label="없음"];
   REMOVE_MCP  -> CHECK_CLI;
