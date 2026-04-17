@@ -117,6 +117,14 @@
       "version": "1.0.0",
       "category": "development",
       "keywords": ["harness", "claude-md", "setup", "onboarding", "hooks", "settings", "project-init"]
+    },
+    {
+      "name": "harness-cost-audit",
+      "description": "데이터 기반 Claude Code 세션 비용 감사. 베이스라인 컨텍스트, transcript 툴 사용량, 프로젝트 전반 MCP 활동을 측정한 뒤에만 제거를 제안. 모든 파괴적 행위는 백업과 건별 승인을 강제.",
+      "source": "./plugins/harness-cost-audit",
+      "version": "1.0.0",
+      "category": "development",
+      "keywords": ["harness", "cost", "audit", "tokens", "optimization", "cache", "mcp", "memory"]
     }
   ]
 }

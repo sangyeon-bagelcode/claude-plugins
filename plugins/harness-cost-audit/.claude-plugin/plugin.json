@@ -1,0 +1,5 @@
+{
+  "name": "harness-cost-audit",
+  "version": "1.0.0",
+  "description": "Data-driven audit to reduce Claude Code session cost — measures baseline context, transcript tool usage, and cross-project MCP activity before proposing any removal. Every destructive action requires per-change approval with timestamped backup and re-measurement."
+}
